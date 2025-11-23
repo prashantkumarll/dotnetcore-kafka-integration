@@ -99,5 +99,38 @@ namespace Api.Tests
             // Note: This is a basic test. More complex verification might require mocking
             producerWrapper.Should().NotBeNull();
         }
+
+        [Fact]
+        public async Task WriteMessage_LongMessage_ShouldSucceed()
+        {
+            // Arrange
+            var config = new ProducerConfig();
+            var topicName = "test-topic";
+            var producerWrapper = new ProducerWrapper(config, topicName);
+            var longMessage = new string('x', 1000);
+
+            // Act
+            Func<Task> act = async () => await producerWrapper.writeMessage(longMessage);
+
+            // Assert
+            await act.Should().NotThrowAsync();
+        }
+
+        [Fact]
+        public void Dispose_AfterMultipleWrites_ShouldCleanupResources()
+        {
+            // Arrange
+            var config = new ProducerConfig();
+            var topicName = "test-topic";
+            var producerWrapper = new ProducerWrapper(config, topicName);
+
+            // Act
+            producerWrapper.writeMessage("message1");
+            producerWrapper.writeMessage("message2");
+            producerWrapper.Dispose();
+
+            // Assert
+            producerWrapper.Should().NotBeNull();
+        }
     }
 }

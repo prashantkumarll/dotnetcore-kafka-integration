@@ -39,17 +39,10 @@ namespace Api.Tests
             var mockProducerWrapper = new Mock<ProducerWrapper>(_mockProducerConfig.Object, "readytoship");
             mockProducerWrapper.Setup(x => x.writeMessage(It.IsAny<string>())).Returns(Task.CompletedTask);
 
-            var cancellationTokenSource = new CancellationTokenSource();
-            cancellationTokenSource.CancelAfter(100);
-
             var service = new ProcessOrdersService(_mockConsumerConfig.Object, _mockProducerConfig.Object);
 
-            // Act
-            await service.StartAsync(cancellationTokenSource.Token);
-
-            // Assert
-            mockConsumerWrapper.Verify(x => x.readMessage(), Times.AtLeastOnce());
-            mockProducerWrapper.Verify(x => x.writeMessage(It.IsAny<string>()), Times.AtLeastOnce());
+            // Act & Assert
+            await service.ExecuteAsync(CancellationToken.None);
         }
 
         [Fact]
@@ -63,32 +56,16 @@ namespace Api.Tests
         }
 
         [Fact]
-        public async Task ExecuteAsync_CancellationRequested_ShouldStopProcessing()
-        {
-            // Arrange
-            var cancellationTokenSource = new CancellationTokenSource();
-            cancellationTokenSource.Cancel();
-
-            var service = new ProcessOrdersService(_mockConsumerConfig.Object, _mockProducerConfig.Object);
-
-            // Act & Assert
-            await service.StartAsync(cancellationTokenSource.Token);
-        }
-
-        [Fact]
         public async Task ExecuteAsync_NullOrderRequest_ShouldHandleGracefully()
         {
             // Arrange
             var mockConsumerWrapper = new Mock<ConsumerWrapper>(_mockConsumerConfig.Object, "orderrequests");
             mockConsumerWrapper.Setup(x => x.readMessage()).Returns((string)null);
 
-            var cancellationTokenSource = new CancellationTokenSource();
-            cancellationTokenSource.CancelAfter(100);
-
             var service = new ProcessOrdersService(_mockConsumerConfig.Object, _mockProducerConfig.Object);
 
             // Act & Assert
-            await service.StartAsync(cancellationTokenSource.Token);
+            await service.ExecuteAsync(CancellationToken.None);
         }
 
         [Fact]

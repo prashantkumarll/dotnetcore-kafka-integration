@@ -12,7 +12,7 @@ namespace Api.Tests
         public void Constructor_ValidConfig_ShouldInitializeConsumer()
         {
             // Arrange
-            var config = new ConsumerConfig { GroupId = "test-group" };
+            var config = new ConsumerConfig();
             var topicName = "test-topic";
 
             // Act
@@ -36,7 +36,7 @@ namespace Api.Tests
         public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var config = new ConsumerConfig { GroupId = "test-group" };
+            var config = new ConsumerConfig();
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => new ConsumerWrapper(config, null));
@@ -46,10 +46,7 @@ namespace Api.Tests
         public void ReadMessage_NoMessageAvailable_ShouldReturnNull()
         {
             // Arrange
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Returns((ConsumeResult<string, string>)null);
-
-            var config = new ConsumerConfig { GroupId = "test-group" };
+            var config = new ConsumerConfig();
             var wrapper = new ConsumerWrapper(config, "test-topic");
 
             // Act
@@ -63,7 +60,7 @@ namespace Api.Tests
         public void Dispose_MultipleInvocations_ShouldNotThrowException()
         {
             // Arrange
-            var config = new ConsumerConfig { GroupId = "test-group" };
+            var config = new ConsumerConfig();
             var wrapper = new ConsumerWrapper(config, "test-topic");
 
             // Act & Assert
@@ -75,7 +72,7 @@ namespace Api.Tests
         public void ReadMessage_OperationCancelled_ShouldReturnNull()
         {
             // Arrange
-            var config = new ConsumerConfig { GroupId = "test-group" };
+            var config = new ConsumerConfig();
             var wrapper = new ConsumerWrapper(config, "test-topic");
 
             // Act
@@ -89,7 +86,7 @@ namespace Api.Tests
         public void ReadMessage_ConsumeException_ShouldReturnNull()
         {
             // Arrange
-            var config = new ConsumerConfig { GroupId = "test-group" };
+            var config = new ConsumerConfig();
             var wrapper = new ConsumerWrapper(config, "test-topic");
 
             // Act
@@ -103,15 +100,44 @@ namespace Api.Tests
         public void Dispose_ShouldCloseConsumer()
         {
             // Arrange
-            var config = new ConsumerConfig { GroupId = "test-group" };
+            var config = new ConsumerConfig();
             var wrapper = new ConsumerWrapper(config, "test-topic");
 
             // Act
             wrapper.Dispose();
 
             // Assert
-            // Verify disposal by calling Dispose again without exception
+            wrapper.Dispose(); // Verify disposal by calling again
+        }
+
+        [Fact]
+        public void ReadMessage_LongRunningConsumer_ShouldHandleTimeout()
+        {
+            // Arrange
+            var config = new ConsumerConfig();
+            var wrapper = new ConsumerWrapper(config, "test-topic");
+
+            // Act
+            var result = wrapper.readMessage();
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public void Dispose_AfterMultipleReads_ShouldCleanupResources()
+        {
+            // Arrange
+            var config = new ConsumerConfig();
+            var wrapper = new ConsumerWrapper(config, "test-topic");
+
+            // Act
+            wrapper.readMessage();
+            wrapper.readMessage();
             wrapper.Dispose();
+
+            // Assert
+            wrapper.Dispose(); // Verify no exceptions
         }
     }
 }

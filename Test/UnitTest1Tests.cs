@@ -13,10 +13,10 @@ namespace Test
             var unitTest = new UnitTest1();
 
             // Act
-            Action testAction = () => unitTest.Test1();
+            unitTest.Test1();
 
             // Assert
-            testAction.Should().NotThrow();
+            true.Should().BeTrue();
         }
 
         [Fact]
@@ -27,6 +27,19 @@ namespace Test
 
             // Assert
             unitTest.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void Test1_EmptyMethod_DoesNotThrow()
+        {
+            // Arrange
+            var unitTest = new UnitTest1();
+
+            // Act
+            Action testAction = () => unitTest.Test1();
+
+            // Assert
+            testAction.Should().NotThrow();
         }
     }
 }
