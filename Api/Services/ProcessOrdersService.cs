@@ -17,7 +17,7 @@ namespace Api.Services
             this.producerConfig = producerConfig;
             this.consumerConfig = consumerConfig;
         }
-        public override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             Console.WriteLine("OrderProcessing Service Started");
             
@@ -42,3 +42,4 @@ namespace Api.Services
     }
 
 }
+
