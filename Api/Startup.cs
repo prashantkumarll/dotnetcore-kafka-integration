@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Collections.Generic;
 
 namespace Api
 {
@@ -23,11 +24,12 @@ namespace Api
             // Register controllers (replaces AddMvc/CompatibilityVersion in old templates)
             services.AddControllers();
 
-            // Bind Kafka configs from configuration
-            var producerConfig = new ProducerConfig();
-            var consumerConfig = new ConsumerConfig();
-            Configuration.GetSection("producer").Bind(producerConfig);
-            Configuration.GetSection("consumer").Bind(consumerConfig);
+            // Bind Kafka configs from configuration - use Get<Dictionary> for dot-notation support
+            var producerConfigDict = Configuration.GetSection("producer").Get<Dictionary<string, string>>();
+            var consumerConfigDict = Configuration.GetSection("consumer").Get<Dictionary<string, string>>();
+
+            var producerConfig = new ProducerConfig(producerConfigDict);
+            var consumerConfig = new ConsumerConfig(consumerConfigDict);
 
             services.AddSingleton(producerConfig);
             services.AddSingleton(consumerConfig);
