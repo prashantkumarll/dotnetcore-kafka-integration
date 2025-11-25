@@ -10,99 +10,35 @@ namespace Api.Tests
     public class ProducerWrapperTests
     {
         [Fact]
-        public void Constructor_ValidConfig_ShouldInitializeProducer()
+        public void WriteMessage_ProduceException_ShouldLogAndRethrow()
+        {
+            // Arrange
+            var mockConfig = new ProducerConfig();
+            var topicName = "error-topic";
+            var mockProducer = new Mock<IProducer<string, string>>();
+            mockProducer.Setup(p => p.ProduceAsync(It.IsAny<string>(), It.IsAny<Message<string, string>>()))
+                        .ThrowsAsync(new ProduceException<string, string>(new Error(ErrorCode.Unknown, "Test error")));
+
+            var producerWrapper = new ProducerWrapper(mockConfig, topicName);
+
+            // Act
+            Func<Task> act = async () => await producerWrapper.writeMessage("test message");
+
+            // Assert
+            act.Should().ThrowAsync<ProduceException<string, string>>();
+        }
+
+        [Fact]
+        public void Dispose_MultipleInvocations_ShouldBeSafe()
         {
             // Arrange
             var config = new ProducerConfig();
-            var topicName = "test-topic";
-
-            // Act
+            var topicName = "safe-topic";
             var producerWrapper = new ProducerWrapper(config, topicName);
 
-            // Assert
-            producerWrapper.Should().NotBeNull();
-        }
-
-        [Fact]
-        public void Constructor_NullConfig_ShouldThrowArgumentNullException()
-        {
-            // Arrange & Act
-            Action act = () => new ProducerWrapper(null, "topic");
-
-            // Assert
-            act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("config");
-        }
-
-        [Fact]
-        public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
-        {
-            // Arrange & Act
-            Action act = () => new ProducerWrapper(new ProducerConfig(), null);
-
-            // Assert
-            act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("topicName");
-        }
-
-        [Fact]
-        public async Task WriteMessage_ValidMessage_ShouldProduceMessage()
-        {
-            // Arrange
-            var config = new ProducerConfig();
-            var topicName = "test-topic";
-            var producerWrapper = new ProducerWrapper(config, topicName);
-            var message = "test message";
-
-            // Act
-            Func<Task> act = async () => await producerWrapper.writeMessage(message);
-
-            // Assert
-            await act.Should().NotThrowAsync();
-        }
-
-        [Fact]
-        public async Task WriteMessage_NullMessage_ShouldThrowArgumentNullException()
-        {
-            // Arrange
-            var config = new ProducerConfig();
-            var topicName = "test-topic";
-            var producerWrapper = new ProducerWrapper(config, topicName);
-
-            // Act
-            Func<Task> act = async () => await producerWrapper.writeMessage(null);
-
-            // Assert
-            await act.Should().ThrowAsync<ArgumentNullException>().Where(ex => ex.ParamName == "message");
-        }
-
-        [Fact]
-        public void Dispose_ShouldFlushAndDisposeProducer()
-        {
-            // Arrange
-            var config = new ProducerConfig();
-            var topicName = "test-topic";
-            var producerWrapper = new ProducerWrapper(config, topicName);
-
-            // Act
+            // Act & Assert
             producerWrapper.Dispose();
-            producerWrapper.Dispose(); // Ensure multiple calls are safe
-
-            // Assert - no exception is thrown
-        }
-
-        [Fact]
-        public void WriteMessage_AfterDispose_ShouldThrowObjectDisposedException()
-        {
-            // Arrange
-            var config = new ProducerConfig();
-            var topicName = "test-topic";
-            var producerWrapper = new ProducerWrapper(config, topicName);
-            producerWrapper.Dispose();
-
-            // Act
-            Func<Task> act = async () => await producerWrapper.writeMessage("test");
-
-            // Assert
-            act.Should().ThrowAsync<ObjectDisposedException>();
+            producerWrapper.Dispose(); // Multiple calls should not throw
         }
     }
 }

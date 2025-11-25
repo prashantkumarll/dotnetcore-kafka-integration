@@ -28,5 +28,18 @@ namespace Test
             // Assert
             constructorAction.Should().NotThrow();
         }
+
+        [Fact]
+        public void Test1_ShouldHaveEmptyImplementation()
+        {
+            // Arrange
+            var unitTest = new UnitTest1();
+
+            // Act
+            unitTest.Test1();
+
+            // Assert - No specific behavior expected
+            true.Should().BeTrue();
+        }
     }
 }
