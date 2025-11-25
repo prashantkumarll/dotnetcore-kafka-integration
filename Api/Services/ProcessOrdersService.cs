@@ -23,20 +23,36 @@ namespace Api.Services
             
             while (!stoppingToken.IsCancellationRequested)
             {
-                var consumerHelper = new ConsumerWrapper(consumerConfig, "orderrequests");
-                string orderRequest = consumerHelper.readMessage();
+                using (var consumerHelper = new ConsumerWrapper(consumerConfig, "orderrequests"))
+                {
+                    string orderRequest = consumerHelper.readMessage();
 
-                //Deserilaize 
-                OrderRequest order = JsonConvert.DeserializeObject<OrderRequest>(orderRequest);
+                    // Check if message is null or empty before deserializing
+                    if (string.IsNullOrWhiteSpace(orderRequest))
+                    {
+                        await Task.Delay(100, stoppingToken); // Small delay to prevent tight loop
+                        continue;
+                    }
 
-                //TODO:: Process Order
-                Console.WriteLine($"Info: OrderHandler => Processing the order for {order.productname}");
-                order.status = OrderStatus.COMPLETED;
+                    //Deserialize 
+                    OrderRequest? order = JsonConvert.DeserializeObject<OrderRequest>(orderRequest);
+                    
+                    if (order == null)
+                    {
+                        Console.WriteLine("Warning: Failed to deserialize order request");
+                        continue;
+                    }
 
-                //Write to ReadyToShip Queue
+                    //TODO:: Process Order
+                    Console.WriteLine($"Info: OrderHandler => Processing the order for {order.productname}");
+                    order.status = OrderStatus.COMPLETED;
 
-                var producerWrapper = new ProducerWrapper(producerConfig,"readytoship");
-                await producerWrapper.writeMessage(JsonConvert.SerializeObject(order));
+                    //Write to ReadyToShip Queue
+                    using (var producerWrapper = new ProducerWrapper(producerConfig, "readytoship"))
+                    {
+                        await producerWrapper.writeMessage(JsonConvert.SerializeObject(order));
+                    }
+                }
             }
         }
     }
