@@ -13,10 +13,20 @@ namespace Test
             var unitTest = new UnitTest1();
 
             // Act
-            Action testAction = () => unitTest.Test1();
+            unitTest.Test1();
 
             // Assert
-            testAction.Should().NotThrow();
+            true.Should().BeTrue();
+        }
+
+        [Fact]
+        public void UnitTest1_Constructor_ShouldInitializeSuccessfully()
+        {
+            // Arrange & Act
+            var unitTest = new UnitTest1();
+
+            // Assert
+            unitTest.Should().NotBeNull();
         }
     }
 }

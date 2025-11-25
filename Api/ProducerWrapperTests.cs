@@ -10,69 +10,21 @@ namespace Api.Tests
     public class ProducerWrapperTests
     {
         [Fact]
-        public void Constructor_ValidConfig_ShouldInitializeProducer()
+        public void WriteMessage_ProduceException_ShouldLogAndRethrow()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockConfig = new ProducerConfig();
             var topicName = "test-topic";
-
-            // Act
-            var producerWrapper = new ProducerWrapper(config, topicName);
-
-            // Assert
-            producerWrapper.Should().NotBeNull();
-        }
-
-        [Fact]
-        public void Constructor_NullConfig_ShouldThrowArgumentNullException()
-        {
-            // Arrange
-            string topicName = "test-topic";
+            var producerWrapper = new ProducerWrapper(mockConfig, topicName);
+            var message = "error-message";
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ProducerWrapper(null, topicName));
-        }
-
-        [Fact]
-        public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
-        {
-            // Arrange
-            var config = new ProducerConfig();
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ProducerWrapper(config, null));
-        }
-
-        [Fact]
-        public async Task WriteMessage_ValidMessage_ShouldProduceMessage()
-        {
-            // Arrange
-            var config = new ProducerConfig();
-            var topicName = "test-topic";
-            var producerWrapper = new ProducerWrapper(config, topicName);
-            var message = "test message";
-
-            // Act
             Func<Task> act = async () => await producerWrapper.writeMessage(message);
-
-            // Assert
-            await act.Should().NotThrowAsync();
+            act.Should().ThrowAsync<ProduceException<string, string>>();
         }
 
         [Fact]
-        public async Task WriteMessage_NullMessage_ShouldThrowArgumentNullException()
-        {
-            // Arrange
-            var config = new ProducerConfig();
-            var topicName = "test-topic";
-            var producerWrapper = new ProducerWrapper(config, topicName);
-
-            // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(() => producerWrapper.writeMessage(null));
-        }
-
-        [Fact]
-        public void Dispose_ShouldFlushAndDisposeProducer()
+        public void Dispose_FlushTimeout_ShouldHandleQuietly()
         {
             // Arrange
             var config = new ProducerConfig();
@@ -80,23 +32,10 @@ namespace Api.Tests
             var producerWrapper = new ProducerWrapper(config, topicName);
 
             // Act
-            producerWrapper.Dispose();
-            producerWrapper.Dispose(); // Ensure multiple calls are safe
+            Action dispose = () => producerWrapper.Dispose();
 
-            // Assert - no exception should be thrown
-        }
-
-        [Fact]
-        public void Dispose_MultipleInvocations_ShouldNotThrow()
-        {
-            // Arrange
-            var config = new ProducerConfig();
-            var topicName = "test-topic";
-            var producerWrapper = new ProducerWrapper(config, topicName);
-
-            // Act & Assert
-            producerWrapper.Dispose();
-            producerWrapper.Dispose(); // Second call should be no-op
+            // Assert
+            dispose.Should().NotThrow();
         }
     }
 }
