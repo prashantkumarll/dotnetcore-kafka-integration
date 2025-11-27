@@ -1,0 +1,129 @@
+using System;
+using Xunit;
+using Moq;
+using FluentAssertions;
+using Confluent.Kafka;
+
+namespace Api.Tests
+{
+    public class ConsumerWrapperTests
+    {
+        [Fact]
+        public void Constructor_ValidParameters_ShouldInitializeConsumer()
+        {
+            // Arrange
+            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var topicName = "test-topic";
+
+            // Act
+            var consumerWrapper = new ConsumerWrapper(mockConfig, topicName);
+
+            // Assert
+            consumerWrapper.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void Constructor_NullConfig_ShouldThrowArgumentNullException()
+        {
+            // Arrange
+            var topicName = "test-topic";
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ConsumerWrapper(null, topicName));
+        }
+
+        [Fact]
+        public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
+        {
+            // Arrange
+            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ConsumerWrapper(mockConfig, null));
+        }
+
+        [Fact]
+        public void ReadMessage_NoMessageAvailable_ShouldReturnNull()
+        {
+            // Arrange
+            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var mockConsumer = new Mock<IConsumer<string, string>>();
+            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Returns((ConsumeResult<string, string>)null);
+
+            // Act
+            var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            var result = consumerWrapper.readMessage();
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public void Dispose_ShouldCloseAndDisposeConsumer()
+        {
+            // Arrange
+            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+
+            // Act
+            consumerWrapper.Dispose();
+            consumerWrapper.Dispose(); // Ensure multiple calls don't cause issues
+
+            // Assert
+            // No specific assertion needed, just ensuring no exceptions are thrown
+        }
+
+        [Fact]
+        public void ReadMessage_ConsumeException_ShouldReturnNull()
+        {
+            // Arrange
+            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var mockConsumer = new Mock<IConsumer<string, string>>();
+            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Throws<ConsumeException>();
+
+            // Act
+            var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            var result = consumerWrapper.readMessage();
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public void ReadMessage_OperationCancelledException_ShouldReturnNull()
+        {
+            // Arrange
+            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var mockConsumer = new Mock<IConsumer<string, string>>();
+            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Throws<OperationCanceledException>();
+
+            // Act
+            var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            var result = consumerWrapper.readMessage();
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public void ReadMessage_MessageAvailable_ShouldReturnMessageValue()
+        {
+            // Arrange
+            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var expectedMessage = "test-message";
+            var mockConsumer = new Mock<IConsumer<string, string>>();
+            var mockConsumeResult = new ConsumeResult<string, string> 
+            { 
+                Message = new Message<string, string> { Value = expectedMessage } 
+            };
+            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Returns(mockConsumeResult);
+
+            // Act
+            var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            var result = consumerWrapper.readMessage();
+
+            // Assert
+            result.Should().Be(expectedMessage);
+        }
+    }
+}
