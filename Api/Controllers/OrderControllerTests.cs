@@ -4,7 +4,7 @@ using Xunit;
 using Moq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Api.Controllers;
 using Api.Models;
 using Newtonsoft.Json;
@@ -13,13 +13,13 @@ namespace Api.Tests
 {
     public class OrderControllerTests
     {
-        private readonly Mock<ProducerConfig> _mockProducerConfig;
+        private readonly Mock<ServiceBusClient> _mockServiceBusClient;
         private readonly OrderController _controller;
 
         public OrderControllerTests()
         {
-            _mockProducerConfig = new Mock<ProducerConfig>();
-            _controller = new OrderController(_mockProducerConfig.Object);
+            _mockServiceBusClient = new Mock<ServiceBusClient>();
+            _controller = new OrderController(_mockServiceBusClient.Object);
         }
 
         [Fact]

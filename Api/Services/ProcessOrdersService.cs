@@ -6,16 +6,14 @@ namespace Api.Services
     using System;
     using Api.Models;
     using Newtonsoft.Json;
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
 
     public class ProcessOrdersService : BackgroundService
     {
-        private readonly ConsumerConfig consumerConfig;
-        private readonly ProducerConfig producerConfig;
-        public ProcessOrdersService(ConsumerConfig consumerConfig, ProducerConfig producerConfig)
+        private readonly ServiceBusClient serviceBusClient;
+        public ProcessOrdersService(ServiceBusClient serviceBusClient)
         {
-            this.producerConfig = producerConfig;
-            this.consumerConfig = consumerConfig;
+            this.serviceBusClient = serviceBusClient;
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -23,8 +21,8 @@ namespace Api.Services
             
             while (!stoppingToken.IsCancellationRequested)
             {
-                var consumerHelper = new ConsumerWrapper(consumerConfig, "orderrequests");
-                string orderRequest = consumerHelper.readMessage();
+                var consumerHelper = new ConsumerWrapper(serviceBusClient, "orderrequests");
+                string orderRequest = await consumerHelper.readMessage();
 
                 //Deserilaize 
                 OrderRequest order = JsonConvert.DeserializeObject<OrderRequest>(orderRequest);
@@ -35,7 +33,7 @@ namespace Api.Services
 
                 //Write to ReadyToShip Queue
 
-                var producerWrapper = new ProducerWrapper(producerConfig,"readytoship");
+                var producerWrapper = new ProducerWrapper(serviceBusClient, "readytoship");
                 await producerWrapper.writeMessage(JsonConvert.SerializeObject(order));
             }
         }
