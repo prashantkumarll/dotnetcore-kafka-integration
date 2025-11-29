@@ -1,18 +1,18 @@
-# Kafka Order Processing Example
+# Service Bus Order Processing Example
 
 ## Overview
-This example demonstrates the complete Kafka-based order processing flow in this microservice.
+This example demonstrates the complete Service Bus-based order processing flow in this microservice.
 
 ## Prerequisites
-1. **Kafka and Zookeeper running**:
+1. **Service Bus and Zookeeper running**:
    ```bash
-   docker ps | grep kafka
+   docker ps | grep service bus
    ```
-   Should show containers on ports 9092 (Kafka) and 2181 (Zookeeper)
+   Should show containers on ports 9092 (Service Bus) and 2181 (Zookeeper)
 
 2. **Application running**:
    ```bash
-   cd /Users/Prashant_Kumar2/dotnetcore-kafka-integration-2
+   cd /Users/Prashant_Kumar2/dotnetcore-service bus-integration-2
    dotnet run --project Api/Api.csproj
    ```
 
@@ -36,10 +36,10 @@ Your order is in progress
 
 **What happens:**
 1. API receives the POST request
-2. Order is published to Kafka topic `orderrequests`
+2. Order is published to Service Bus topic `orderrequests`
 3. Background service (`ProcessOrdersService`) consumes the message
 4. Order status is updated to `COMPLETED`
-5. Processed order is published to Kafka topic `readytoship`
+5. Processed order is published to Service Bus topic `readytoship`
 
 ---
 
@@ -113,17 +113,17 @@ curl -X POST http://localhost:5000/api/order \
 # Info: OrderHandler => Processing the order for Wireless Mouse
 ```
 
-**Monitor Kafka topics using kafka-console-consumer:**
+**Monitor Service Bus topics using service bus-console-consumer:**
 ```bash
 # Monitor incoming orders
-docker exec -it <kafka-container-id> kafka-console-consumer \
-  --bootstrap-server localhost:9092 \
+docker exec -it <service bus-container-id> service bus-console-consumer \
+  --bootstrap-server your-servicebus.servicebus.windows.net \
   --topic orderrequests \
   --from-beginning
 
 # Monitor processed orders
-docker exec -it <kafka-container-id> kafka-console-consumer \
-  --bootstrap-server localhost:9092 \
+docker exec -it <service bus-container-id> service bus-console-consumer \
+  --bootstrap-server your-servicebus.servicebus.windows.net \
   --topic readytoship \
   --from-beginning
 ```
@@ -174,7 +174,7 @@ After processing, status changes to `1` (COMPLETED).
 ┌─────────────────────┐
 │  OrderController    │
 └──────┬──────────────┘
-       │ Publishes to Kafka
+       │ Publishes to Service Bus
        ▼
 ┌─────────────────────┐
 │ Topic: orderrequests│
@@ -187,7 +187,7 @@ After processing, status changes to `1` (COMPLETED).
 │ - Processes order        │
 │ - Updates status         │
 └──────┬───────────────────┘
-       │ Publishes to Kafka
+       │ Publishes to Service Bus
        ▼
 ┌─────────────────────┐
 │ Topic: readytoship  │
@@ -199,8 +199,8 @@ After processing, status changes to `1` (COMPLETED).
 ## Troubleshooting
 
 **Connection refused:**
-- Ensure Kafka is running: `docker ps`
-- Check Kafka is on port 9092: `lsof -i :9092`
+- Ensure Service Bus is running: `docker ps`
+- Check Service Bus is on port 9092: `lsof -i :9092`
 
 **Port 5000 already in use:**
 ```bash
@@ -209,7 +209,7 @@ lsof -ti:5000 | xargs kill -9
 
 **Application crashes:**
 - Check logs for null reference errors
-- Verify Kafka topics exist
+- Verify Service Bus topics exist
 - Ensure configuration in `appsettings.json` is correct
 
 ---
@@ -218,6 +218,6 @@ lsof -ti:5000 | xargs kill -9
 
 1. **Use different product names** to track orders through the system
 2. **Monitor console output** to see processing messages
-3. **Check both Kafka topics** to verify end-to-end flow
+3. **Check both Service Bus topics** to verify end-to-end flow
 4. **Vary quantities and amounts** to test different scenarios
 5. **Send rapid requests** to test concurrent processing
