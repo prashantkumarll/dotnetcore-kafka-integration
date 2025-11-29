@@ -120,3 +120,7 @@ namespace Api.Tests
         }
     }
 }
+            consumerWrapper.Invoking(x => x.Dispose()).Should().NotThrow();
+
+
+

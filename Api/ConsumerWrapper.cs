@@ -115,3 +115,47 @@ namespace Api
         }
     }
 }
+            _processor.StartProcessingAsync().GetAwaiter().GetResult();
+
+            var completed = Task.WhenAny(newTcs.Task, Task.Delay(TimeSpan.FromSeconds(1))).GetAwaiter().GetResult();
+            if (completed == newTcs.Task)
+            {
+                return newTcs.Task.GetAwaiter().GetResult();
+            }
+
+            // timeout - clean up pending tcs if still set
+            Interlocked.CompareExchange(ref _messageTcs, null, newTcs);
+            return null;
+        }
+
+        /// <summary>
+        /// Properly close and dispose the consumer.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed) return;
+            try
+            {
+                _processor.StopProcessingAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // ignore errors on stop
+            }
+
+            // Detach handlers and dispose processor
+            try
+            {
+                this._processor.ProcessMessageAsync -= ProcessMessageHandler;
+                this._processor.ProcessErrorAsync -= ProcessErrorHandler;
+            }
+            catch
+            {
+                // ignore
+            }
+
+            this._processor.DisposeAsync().GetAwaiter().GetResult();
+            _disposed = true;
+        }
+    }
+}
