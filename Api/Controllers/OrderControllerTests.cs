@@ -3,7 +3,7 @@ using Xunit;
 using Moq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Newtonsoft.Json;
 using Api.Controllers;
 using Api.Models;
@@ -12,13 +12,13 @@ namespace Api.Tests
 {
     public class OrderControllerTests
     {
-        private readonly Mock<ProducerConfig> _mockProducerConfig;
+        private readonly Mock<ServiceBusClient> _mockServiceBusClient;
         private readonly OrderController _controller;
 
         public OrderControllerTests()
         {
-            _mockProducerConfig = new Mock<ProducerConfig>();
-            _controller = new OrderController(_mockProducerConfig.Object);
+            _mockServiceBusClient = new Mock<ServiceBusClient>();
+            _controller = new OrderController(_mockServiceBusClient.Object);
         }
 
         [Fact]
@@ -55,10 +55,10 @@ namespace Api.Tests
         }
 
         [Fact]
-        public void Constructor_ShouldInitializeWithProducerConfig()
+        public void Constructor_ShouldInitializeWithServiceBusClient()
         {
             // Arrange & Act
-            var controller = new OrderController(_mockProducerConfig.Object);
+            var controller = new OrderController(_mockServiceBusClient.Object);
 
             // Assert
             controller.Should().NotBeNull();
@@ -82,7 +82,7 @@ namespace Api.Tests
         }
 
         [Fact]
-        public async Task PostAsync_ProducerWrapperCalled_WithCorrectMessage()
+        public async Task PostAsync_ServiceBusClientCalled_WithCorrectMessage()
         {
             // Arrange
             var orderRequest = new OrderRequest
@@ -95,7 +95,7 @@ namespace Api.Tests
 
             // Assert
             result.Should().BeOfType<CreatedResult>();
-            // Note: Actual verification of ProducerWrapper would require more complex mocking
+            // Note: Actual verification of ServiceBusClient would require more complex mocking
         }
     }
 }

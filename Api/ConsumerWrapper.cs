@@ -1,72 +1,117 @@
 namespace Api
 {
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
     using System;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class ConsumerWrapper : IDisposable
     {
         private readonly string _topicName;
-        private readonly ConsumerConfig _consumerConfig;
-        private readonly IConsumer<string, string> _consumer;
-        private static readonly Random rand = new Random();
+        private readonly ServiceBusProcessor _processor;
+        private volatile TaskCompletionSource<string> _tcs;
         private bool _disposed = false;
 
-        public ConsumerWrapper(ConsumerConfig config, string topicName)
+        public ConsumerWrapper(ServiceBusClient client, string topicName, ServiceBusProcessorOptions options = null)
         {
             this._topicName = topicName ?? throw new ArgumentNullException(nameof(topicName));
-            this._consumerConfig = config ?? throw new ArgumentNullException(nameof(config));
+            if (client == null) throw new ArgumentNullException(nameof(client));
+            options = options ?? new ServiceBusProcessorOptions();
 
-            // Build the IConsumer instance from the builder
-            this._consumer = new ConsumerBuilder<string, string>(this._consumerConfig).Build();
+            this._tcs = null;
 
-            // Subscribe to the single topic name
-            this._consumer.Subscribe(this._topicName);
+            // Create processor for the topic
+            this._processor = client.CreateProcessor(this._topicName, options);
+
+            // Register handlers
+            this._processor.ProcessMessageAsync += MessageHandler;
+            this._processor.ProcessErrorAsync += ErrorHandler;
+
+            // Start processing
+            this._processor.StartProcessingAsync().GetAwaiter().GetResult();
         }
 
-        /// <summary>
-        /// Read a single message, waits up to 1 second. Returns null if no message was available.
-        /// </summary>
-        public string readMessage()
+        public async Task<string> readMessage()
         {
-            // Use a short timeout so this method doesn't block indefinitely.
-            // You can adjust the timeout or add an overload that accepts CancellationToken.
+            // Set up a TCS that will be completed by the message handler
+            var newTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            // Ensure that only one waiter is active at a time
+            if (Interlocked.CompareExchange(ref _tcs, newTcs, null) != null)
+            {
+                // Another waiter exists, replace it
+                // For simplicity, return null
+                return null;
+            }
+
             try
             {
-                var consumeResult = _consumer.Consume(TimeSpan.FromSeconds(1));
-                if (consumeResult == null) return null;
-
-                // New API exposes Message.Value
-                return consumeResult.Message?.Value;
+                // Wait up to 1 second for a message
+                var completed = await Task.WhenAny(newTcs.Task, Task.Delay(TimeSpan.FromSeconds(1))).ConfigureAwait(false);
+                if (completed == newTcs.Task)
+                {
+                    return await newTcs.Task.ConfigureAwait(false);
+                }
+                return null;
             }
             catch (OperationCanceledException)
             {
-                // consumer was cancelled/closed - treat as no message
                 return null;
             }
-            catch (ConsumeException cex)
+            finally
             {
-                // log or rethrow depending on your logging strategy
-                // throw; // uncomment if you want to bubble up
-                return null;
+                // Clear the TCS so future calls can await
+                Interlocked.Exchange(ref _tcs, null);
             }
         }
 
-        /// <summary>
-        /// Properly close and dispose the consumer.
-        /// </summary>
+        private Task MessageHandler(ProcessMessageEventArgs args)
+        {
+            try
+            {
+                var body = args.Message.Body.ToString();
+
+                var tcs = Interlocked.Exchange(ref _tcs, null);
+                if (tcs != null)
+                {
+                    // Try to set result without throwing if already completed
+                    tcs.TrySetResult(body);
+                }
+
+                // Complete the message so it won't be received again
+                return args.CompleteMessageAsync(args.Message);
+            }
+            catch
+            {
+                return Task.CompletedTask;
+            }
+        }
+
+        private Task ErrorHandler(ProcessErrorEventArgs args)
+        {
+            // Optionally log the error
+            return Task.CompletedTask;
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
             try
             {
-                // Attempt to leave the group cleanly
-                _consumer.Close();
+                _processor.StopProcessingAsync().GetAwaiter().GetResult();
             }
             catch
             {
-                // ignore errors on close
+                // ignore errors on stop
             }
-            _consumer.Dispose();
+            try
+            {
+                _processor.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // ignore dispose errors
+            }
             _disposed = true;
         }
     }
