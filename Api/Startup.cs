@@ -1,11 +1,12 @@
-﻿using Api.Services;
-using Confluent.Kafka;
+using Api.Services;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Api
 {
@@ -24,15 +25,19 @@ namespace Api
             // Register controllers (replaces AddMvc/CompatibilityVersion in old templates)
             services.AddControllers();
 
-            // Bind Kafka configs from configuration - use Get<Dictionary> for dot-notation support
-            var producerConfigDict = Configuration.GetSection("producer").Get<Dictionary<string, string>>();
-            var consumerConfigDict = Configuration.GetSection("consumer").Get<Dictionary<string, string>>();
+            // Bind Service Bus settings from configuration
+            var serviceBusSection = Configuration.GetSection("serviceBus");
+            var connectionString = serviceBusSection.GetValue<string>("connectionString");
+            var topicName = serviceBusSection.GetValue<string>("topicName");
 
-            var producerConfig = new ProducerConfig(producerConfigDict);
-            var consumerConfig = new ConsumerConfig(consumerConfigDict);
+            // Create a ServiceBusClient (replaces ProducerConfig)
+            var serviceBusClient = new ServiceBusClient(connectionString);
 
-            services.AddSingleton(producerConfig);
-            services.AddSingleton(consumerConfig);
+            // Create processor options (replaces ConsumerConfig)
+            var processorOptions = new ServiceBusProcessorOptions();
+
+            services.AddSingleton(serviceBusClient);
+            services.AddSingleton(processorOptions);
 
             // Register the hosted/background service
             services.AddHostedService<ProcessOrdersService>();
