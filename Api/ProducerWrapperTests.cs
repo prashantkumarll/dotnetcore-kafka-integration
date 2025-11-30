@@ -2,7 +2,7 @@ using System;
 using Xunit;
 using Moq;
 using FluentAssertions;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using System.Threading.Tasks;
 
 namespace Api.Tests
@@ -13,11 +13,11 @@ namespace Api.Tests
         public void Constructor_ValidConfig_ShouldInitializeProducer()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
 
             // Act
-            var producerWrapper = new ProducerWrapper(config, topicName);
+            var producerWrapper = new ProducerWrapper(mockClient.Object, topicName);
 
             // Assert
             producerWrapper.Should().NotBeNull();
@@ -37,37 +37,37 @@ namespace Api.Tests
         public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ProducerWrapper(config, null!));
+            Assert.Throws<ArgumentNullException>(() => new ProducerWrapper(null, null!));
         }
 
         [Fact]
         public async Task WriteMessage_ValidMessage_ShouldProduceMessage()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
             var message = "test-message";
 
-            using var producerWrapper = new ProducerWrapper(config, topicName);
+            using var producerWrapper = new ProducerWrapper(mockClient.Object, topicName);
 
             // Act
             await producerWrapper.writeMessage(message);
 
             // Assert
-            // Note: This is a basic test. More complex scenarios might require mocking ProduceAsync
+            // Note: This is a basic test. More complex scenarios might require mocking ServiceBus
         }
 
         [Fact]
         public async Task WriteMessage_NullMessage_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
 
-            using var producerWrapper = new ProducerWrapper(config, topicName);
+            using var producerWrapper = new ProducerWrapper(mockClient.Object, topicName);
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentNullException>(() => producerWrapper.writeMessage(null!));
@@ -77,10 +77,10 @@ namespace Api.Tests
         public void Dispose_ShouldFlushAndDisposeProducer()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
 
-            var producerWrapper = new ProducerWrapper(config, topicName);
+            var producerWrapper = new ProducerWrapper(mockClient.Object, topicName);
 
             // Act
             producerWrapper.Dispose();
@@ -94,15 +94,16 @@ namespace Api.Tests
         public void WriteMessage_ProduceException_ShouldThrowException()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
             var message = "test-message";
 
-            using var producerWrapper = new ProducerWrapper(config, topicName);
+            using var producerWrapper = new ProducerWrapper(mockClient.Object, topicName);
 
             // Act & Assert
-            // Note: This test might require more complex mocking of ProduceAsync
-            Assert.ThrowsAsync<ProduceException<string, string>>(() => producerWrapper.writeMessage(message));
+            // Note: This test might require more complex mocking of ServiceBus send operations
+            Assert.ThrowsAsync<Exception>(() => producerWrapper.writeMessage(message));
         }
     }
+}
 }
