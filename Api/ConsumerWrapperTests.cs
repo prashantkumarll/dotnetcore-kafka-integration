@@ -2,7 +2,6 @@ using System;
 using Xunit;
 using Moq;
 using FluentAssertions;
-using Confluent.Kafka;
 
 namespace Api.Tests
 {
@@ -12,11 +11,12 @@ namespace Api.Tests
         public void Constructor_ValidParameters_ShouldInitializeConsumer()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var options = new ServiceBusProcessorOptions();
             var topicName = "test-topic";
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act
-            using var consumerWrapper = new ConsumerWrapper(mockConfig, topicName);
+            using var consumerWrapper = new ConsumerWrapper(mockClient.Object, topicName, options);
 
             // Assert
             consumerWrapper.Should().NotBeNull();
@@ -27,31 +27,32 @@ namespace Api.Tests
         {
             // Arrange
             string topicName = "test-topic";
+            var options = new ServiceBusProcessorOptions();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ConsumerWrapper(null, topicName));
+            Assert.Throws<ArgumentNullException>(() => new ConsumerWrapper(null, topicName, options));
         }
 
         [Fact]
         public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var options = new ServiceBusProcessorOptions();
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ConsumerWrapper(mockConfig, null));
+            Assert.Throws<ArgumentNullException>(() => new ConsumerWrapper(null, null, options));
         }
 
         [Fact]
         public void ReadMessage_NoMessageAvailable_ShouldReturnNull()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Returns((ConsumeResult<string, string>)null);
+            var options = new ServiceBusProcessorOptions();
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act & Assert
-            using var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            using var consumerWrapper = new ConsumerWrapper(mockClient.Object, "test-topic", options);
             var result = consumerWrapper.readMessage();
             result.Should().BeNull();
         }
@@ -60,10 +61,11 @@ namespace Api.Tests
         public void Dispose_MultipleDisposes_ShouldNotThrowException()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var options = new ServiceBusProcessorOptions();
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act & Assert
-            using (var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic"))
+            using (var consumerWrapper = new ConsumerWrapper(mockClient.Object, "test-topic", options))
             {
                 consumerWrapper.Dispose();
                 consumerWrapper.Dispose(); // Second dispose should not throw
@@ -74,12 +76,11 @@ namespace Api.Tests
         public void ReadMessage_OperationCancelled_ShouldReturnNull()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Throws(new OperationCanceledException());
+            var options = new ServiceBusProcessorOptions();
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act & Assert
-            using var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            using var consumerWrapper = new ConsumerWrapper(mockClient.Object, "test-topic", options);
             var result = consumerWrapper.readMessage();
             result.Should().BeNull();
         }
@@ -88,12 +89,11 @@ namespace Api.Tests
         public void ReadMessage_ConsumeException_ShouldReturnNull()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Throws(new ConsumeException(new ConsumeResult<string, string>()));
+            var options = new ServiceBusProcessorOptions();
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act & Assert
-            using var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            using var consumerWrapper = new ConsumerWrapper(mockClient.Object, "test-topic", options);
             var result = consumerWrapper.readMessage();
             result.Should().BeNull();
         }
@@ -102,10 +102,11 @@ namespace Api.Tests
         public void Dispose_ShouldCloseAndDisposeConsumer()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var options = new ServiceBusProcessorOptions();
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act & Assert
-            using (var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic"))
+            using (var consumerWrapper = new ConsumerWrapper(mockClient.Object, "test-topic", options))
             {
                 consumerWrapper.Dispose();
             }
