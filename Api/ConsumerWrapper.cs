@@ -1,17 +1,17 @@
 namespace Api
 {
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
     using System;
 
     public class ConsumerWrapper : IDisposable
     {
         private readonly string _topicName;
-        private readonly ConsumerConfig _consumerConfig;
-        private readonly IConsumer<string, string> _consumer;
+        private readonly ServiceBusClient _consumerConfig;
+        private readonly IServiceBusProcessor _consumer;
         private static readonly Random rand = new Random();
         private bool _disposed = false;
 
-        public ConsumerWrapper(ConsumerConfig config, string topicName)
+        public ConsumerWrapper(ServiceBusClient config, string topicName)
         {
             this._topicName = topicName ?? throw new ArgumentNullException(nameof(topicName));
             this._consumerConfig = config ?? throw new ArgumentNullException(nameof(config));
@@ -20,7 +20,7 @@ namespace Api
             this._consumer = new ConsumerBuilder<string, string>(this._consumerConfig).Build();
 
             // Subscribe to the single topic name
-            this._consumer.Subscribe(this._topicName);
+            this._consumer.StartProcessingAsync(this._topicName);
         }
 
         /// <summary>
@@ -32,7 +32,7 @@ namespace Api
             // You can adjust the timeout or add an overload that accepts CancellationToken.
             try
             {
-                var consumeResult = _consumer.Consume(TimeSpan.FromSeconds(1));
+                var consumeResult = _consumer.ReceiveMessageAsync(TimeSpan.FromSeconds(1));
                 if (consumeResult == null) return null;
 
                 // New API exposes Message.Value

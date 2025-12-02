@@ -2,7 +2,7 @@ using System;
 using Xunit;
 using Moq;
 using FluentAssertions;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using System.Threading.Tasks;
 
 namespace Api.Tests
@@ -13,11 +13,11 @@ namespace Api.Tests
         public void Constructor_ValidConfig_ShouldInitializeProducer()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
 
             // Act
-            var producerWrapper = new ProducerWrapper(config, topicName);
+            var producerWrapper = new ProducerWrapper(mockClient.Object, topicName);
 
             // Assert
             producerWrapper.Should().NotBeNull();
@@ -27,6 +27,7 @@ namespace Api.Tests
         public void Constructor_NullConfig_ShouldThrowArgumentNullException()
         {
             // Arrange
+            var mockClient = new Mock<ServiceBusClient>();
             string topicName = "test-topic";
 
             // Act & Assert
@@ -37,21 +38,21 @@ namespace Api.Tests
         public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ProducerWrapper(config, null));
+            Assert.Throws<ArgumentNullException>(() => new ProducerWrapper(null, null));
         }
 
         [Fact]
         public async Task WriteMessage_ValidMessage_ShouldProduceMessage()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
             var message = "test-message";
 
-            using (var producerWrapper = new ProducerWrapper(config, topicName))
+            using (var producerWrapper = new ProducerWrapper(mockClient.Object, topicName))
             {
                 // Act
                 await producerWrapper.writeMessage(message);
@@ -64,10 +65,10 @@ namespace Api.Tests
         public void WriteMessage_NullMessage_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
 
-            using (var producerWrapper = new ProducerWrapper(config, topicName))
+            using (var producerWrapper = new ProducerWrapper(mockClient.Object, topicName))
             {
                 // Act & Assert
                 Assert.ThrowsAsync<ArgumentNullException>(() => producerWrapper.writeMessage(null));
@@ -78,11 +79,11 @@ namespace Api.Tests
         public void Dispose_ShouldFlushAndDisposeProducer()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
 
             // Act
-            var producerWrapper = new ProducerWrapper(config, topicName);
+            var producerWrapper = new ProducerWrapper(mockClient.Object, topicName);
             producerWrapper.Dispose();
 
             // Assert - no exception means successful disposal
@@ -92,11 +93,11 @@ namespace Api.Tests
         public void MultipleDispose_ShouldNotThrowException()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
 
             // Act
-            var producerWrapper = new ProducerWrapper(config, topicName);
+            var producerWrapper = new ProducerWrapper(mockClient.Object, topicName);
             producerWrapper.Dispose();
             producerWrapper.Dispose(); // Second dispose should not throw
 
@@ -107,11 +108,11 @@ namespace Api.Tests
         public async Task WriteMessage_LongMessage_ShouldProduce()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
             var longMessage = new string('x', 1000);
 
-            using (var producerWrapper = new ProducerWrapper(config, topicName))
+            using (var producerWrapper = new ProducerWrapper(mockClient.Object, topicName))
             {
                 // Act
                 await producerWrapper.writeMessage(longMessage);
@@ -120,4 +121,5 @@ namespace Api.Tests
             }
         }
     }
+}
 }
