@@ -2,7 +2,7 @@ using System;
 using Xunit;
 using Moq;
 using FluentAssertions;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using System.Threading.Tasks;
 
 namespace Api.Tests
@@ -13,7 +13,7 @@ namespace Api.Tests
         public void Constructor_ValidConfig_ShouldInitializeProducer()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var config = new ServiceBusClient(connectionString);
             var topicName = "test-topic";
 
             // Act
@@ -37,7 +37,7 @@ namespace Api.Tests
         public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var config = new ServiceBusClient(connectionString);
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => new ProducerWrapper(config, null!));
@@ -47,7 +47,7 @@ namespace Api.Tests
         public async Task WriteMessage_ValidMessage_ShouldProduceMessage()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var config = new ServiceBusClient(connectionString);
             var topicName = "test-topic";
             var producerWrapper = new ProducerWrapper(config, topicName);
             var message = "test message";
@@ -63,7 +63,7 @@ namespace Api.Tests
         public async Task WriteMessage_NullMessage_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var config = new ServiceBusClient(connectionString);
             var topicName = "test-topic";
             var producerWrapper = new ProducerWrapper(config, topicName);
 
@@ -75,7 +75,7 @@ namespace Api.Tests
         public void Dispose_ShouldFlushAndDisposeProducer()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var config = new ServiceBusClient(connectionString);
             var topicName = "test-topic";
             var producerWrapper = new ProducerWrapper(config, topicName);
 
@@ -90,7 +90,7 @@ namespace Api.Tests
         public void MultipleDispose_ShouldNotThrowException()
         {
             // Arrange
-            var config = new ProducerConfig();
+            var config = new ServiceBusClient(connectionString);
             var topicName = "test-topic";
             var producerWrapper = new ProducerWrapper(config, topicName);
 

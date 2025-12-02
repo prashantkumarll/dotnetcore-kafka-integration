@@ -1,18 +1,18 @@
 namespace Api
 {
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
     using System;
     using System.Threading.Tasks;
 
     public class ProducerWrapper : IDisposable
     {
         private readonly string _topicName;
-        private readonly ProducerConfig _config;
-        private readonly IProducer<string, string> _producer;
+        private readonly ServiceBusClient _config;
+        private readonly IServiceBusSender _producer;
         private static readonly Random rand = new Random();
         private bool _disposed = false;
 
-        public ProducerWrapper(ProducerConfig config, string topicName)
+        public ProducerWrapper(ServiceBusClient config, string topicName)
         {
             _topicName = topicName ?? throw new ArgumentNullException(nameof(topicName));
             _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -34,14 +34,14 @@ namespace Api
             if (message == null) throw new ArgumentNullException(nameof(message));
             try
             {
-                var msg = new Message<string, string>
+                var msg = new ServiceBusMessage
                 {
                     Key = rand.Next(5).ToString(),
                     Value = message
                 };
 
-                // ProduceAsync returns DeliveryResult<TKey, TValue>
-                var dr = await _producer.ProduceAsync(_topicName, msg).ConfigureAwait(false);
+                // SendMessageAsync returns DeliveryResult<TKey, TValue>
+                var dr = await _producer.SendMessageAsync(_topicName, msg).ConfigureAwait(false);
 
                 // New API exposes the produced message on dr.Message
                 Console.WriteLine($"KAFKA => Delivered '{dr.Message?.Value}' to '{dr.TopicPartitionOffset}'");

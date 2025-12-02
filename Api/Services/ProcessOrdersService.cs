@@ -6,13 +6,13 @@ namespace Api.Services
     using System;
     using Api.Models;
     using Newtonsoft.Json;
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
 
     public class ProcessOrdersService : BackgroundService
     {
-        private readonly ConsumerConfig consumerConfig;
-        private readonly ProducerConfig producerConfig;
-        public ProcessOrdersService(ConsumerConfig consumerConfig, ProducerConfig producerConfig)
+        private readonly ServiceBusClient consumerConfig;
+        private readonly ServiceBusClient producerConfig;
+        public ProcessOrdersService(ServiceBusClient consumerConfig, ServiceBusClient producerConfig)
         {
             this.producerConfig = producerConfig;
             this.consumerConfig = consumerConfig;
@@ -25,7 +25,7 @@ namespace Api.Services
             {
                 using (var consumerHelper = new ConsumerWrapper(consumerConfig, "orderrequests"))
                 {
-                    string orderRequest = consumerHelper.readMessage();
+                    string orderRequest = await consumerHelper.readMessage();
 
                     // Check if message is null or empty before deserializing
                     if (string.IsNullOrWhiteSpace(orderRequest))
