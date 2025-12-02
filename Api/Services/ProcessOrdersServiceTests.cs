@@ -2,7 +2,7 @@ using System;
 using Xunit;
 using Moq;
 using FluentAssertions;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Newtonsoft.Json;
 using Api.Services;
 using Api.Models;
@@ -11,20 +11,20 @@ namespace Api.Tests
 {
     public class ProcessOrdersServiceTests
     {
-        private readonly Mock<ConsumerConfig> _mockConsumerConfig;
-        private readonly Mock<ProducerConfig> _mockProducerConfig;
+        private readonly Mock<ServiceBusProcessorOptions> _mockServiceBusProcessorOptions;
+        private readonly Mock<ServiceBusClient> _mockServiceBusClient;
 
         public ProcessOrdersServiceTests()
         {
-            _mockConsumerConfig = new Mock<ConsumerConfig>();
-            _mockProducerConfig = new Mock<ProducerConfig>();
+            _mockServiceBusProcessorOptions = new Mock<ServiceBusProcessorOptions>();
+            _mockServiceBusClient = new Mock<ServiceBusClient>();
         }
 
         [Fact]
         public void Constructor_ShouldInitializeWithValidConfigs()
         {
             // Arrange & Act
-            var service = new ProcessOrdersService(_mockConsumerConfig.Object, _mockProducerConfig.Object);
+            var service = new ProcessOrdersService(_mockServiceBusProcessorOptions.Object, _mockServiceBusClient.Object);
 
             // Assert
             service.Should().NotBeNull();
@@ -34,10 +34,10 @@ namespace Api.Tests
         public async Task ExecuteAsync_WithNullMessage_ShouldContinue()
         {
             // Arrange
-            var mockConsumerWrapper = new Mock<ConsumerWrapper>(_mockConsumerConfig.Object, "orderrequests");
+            var mockConsumerWrapper = new Mock<ConsumerWrapper>(_mockServiceBusProcessorOptions.Object, "orderrequests");
             mockConsumerWrapper.Setup(x => x.readMessage()).Returns((string)null);
 
-            var service = new ProcessOrdersService(_mockConsumerConfig.Object, _mockProducerConfig.Object);
+            var service = new ProcessOrdersService(_mockServiceBusProcessorOptions.Object, _mockServiceBusClient.Object);
 
             // Act & Assert
             await Assert.RaisesAsync<OperationCanceledException>(async () => 
@@ -85,31 +85,31 @@ namespace Api.Tests
         }
 
         [Fact]
-        public void ProducerConfig_ShouldAllowConfiguration()
+        public void ServiceBusClient_ShouldAllowConfiguration()
         {
             // Arrange
-            var config = new ProducerConfig
+            var config = new ServiceBusClient
             {
-                BootstrapServers = "localhost:9092"
+                ConnectionString = "localhost:9092"
             };
 
             // Assert
-            config.BootstrapServers.Should().Be("localhost:9092");
+            config.ConnectionString.Should().Be("localhost:9092");
         }
 
         [Fact]
-        public void ConsumerConfig_ShouldAllowConfiguration()
+        public void ServiceBusProcessorOptions_ShouldAllowConfiguration()
         {
             // Arrange
-            var config = new ConsumerConfig
+            var config = new ServiceBusProcessorOptions
             {
-                BootstrapServers = "localhost:9092",
-                GroupId = "test-group"
+                ConnectionString = "localhost:9092",
+                SessionId = "test-group"
             };
 
             // Assert
-            config.BootstrapServers.Should().Be("localhost:9092");
-            config.GroupId.Should().Be("test-group");
+            config.ConnectionString.Should().Be("localhost:9092");
+            config.SessionId.Should().Be("test-group");
         }
 
         [Fact]
