@@ -12,12 +12,12 @@
     <Compile Remove="wwwroot\**" />
     <Content Remove="wwwroot\**" />
     <EmbeddedResource Remove="wwwroot\**" />
+  <ItemGroup>
     <None Remove="wwwroot\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="confluent.kafka" Version="2.12.0" />
-    <PackageReference Include="librdkafka.redist" Version="2.12.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.0" />
     <!-- <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.1.2" PrivateAssets="All" /> -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
@@ -26,6 +26,5 @@
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
   </ItemGroup>
-
 </Project>
 

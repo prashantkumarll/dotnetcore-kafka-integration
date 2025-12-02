@@ -4,7 +4,7 @@ using Xunit;
 using Moq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Newtonsoft.Json;
 using Api.Controllers;
 using Api.Models;
@@ -13,13 +13,13 @@ namespace Api.Tests
 {
     public class OrderControllerTests
     {
-        private readonly Mock<ProducerConfig> _mockProducerConfig;
+        private readonly Mock<ServiceBusClient> _mockServiceBusClient;
         private readonly OrderController _controller;
 
         public OrderControllerTests()
         {
-            _mockProducerConfig = new Mock<ProducerConfig>();
-            _controller = new OrderController(_mockProducerConfig.Object);
+            _mockServiceBusClient = new Mock<ServiceBusClient>();
+            _controller = new OrderController(_mockServiceBusClient.Object);
         }
 
         [Fact]
@@ -66,7 +66,7 @@ namespace Api.Tests
         public void Constructor_ValidProducerConfig_InitializesController()
         {
             // Arrange & Act
-            var controller = new OrderController(_mockProducerConfig.Object);
+            var controller = new OrderController(_mockServiceBusClient.Object);
 
             // Assert
             controller.Should().NotBeNull();
@@ -84,7 +84,7 @@ namespace Api.Tests
             // Act
             await _controller.PostAsync(orderRequest);
 
-            // Assert - you might need to mock ProducerWrapper to verify serialization
+            // Assert - you might need to mock ServiceBusClient or a wrapper to verify serialization
             // This is a placeholder for more specific serialization verification
             JsonConvert.SerializeObject(orderRequest).Should().NotBeNullOrEmpty();
         }
