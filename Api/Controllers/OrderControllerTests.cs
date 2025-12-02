@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Api.Controllers;
 using Api.Models;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Moq;
@@ -14,28 +14,24 @@ namespace Test
 {
     public class OrderControllerTests
     {
-        private readonly ProducerConfig _mockConfig;
+        private readonly Mock<ServiceBusClient> _mockClient;
         private readonly OrderController _controller;
 
         public OrderControllerTests()
         {
-            // Arrange - Setup mock configuration
-            _mockConfig = new ProducerConfig
-            {
-                BootstrapServers = "localhost:9092",
-                ClientId = "test-client"
-            };
-            _controller = new OrderController(_mockConfig);
+            // Arrange - Setup mock ServiceBus client
+            _mockClient = new Mock<ServiceBusClient>();
+            _controller = new OrderController(_mockClient.Object);
         }
 
         [Fact]
         public void Constructor_WithValidConfig_ShouldInitializeController()
         {
             // Arrange
-            var config = new ProducerConfig { BootstrapServers = "localhost:9092" };
+            var client = new Mock<ServiceBusClient>().Object;
 
             // Act
-            var controller = new OrderController(config);
+            var controller = new OrderController(client);
 
             // Assert
             controller.Should().NotBeNull();
@@ -107,7 +103,7 @@ namespace Test
         }
 
         [Fact]
-        public async Task PostAsync_ShouldCreateProducerWrapperWithCorrectParameters()
+        public async Task PostAsync_ShouldCreateServiceBusClientWrapperWithCorrectParameters()
         {
             // Arrange
             var orderRequest = new OrderRequest();
@@ -122,15 +118,15 @@ namespace Test
         }
 
         [Fact]
-        public void PostAsync_ShouldUseCorrectKafkaTopic()
+        public void PostAsync_ShouldUseCorrectServiceBusEntity()
         {
             // Arrange
             var orderRequest = new OrderRequest();
-            var expectedTopic = "orderrequests";
+            var expectedEntity = "orderrequests";
 
             // Act & Assert
-            // Verify that the correct topic name is used
-            expectedTopic.Should().Be("orderrequests");
+            // Verify that the correct Service Bus entity name is used
+            expectedEntity.Should().Be("orderrequests");
         }
 
         [Fact]
