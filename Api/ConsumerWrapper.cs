@@ -7,7 +7,7 @@ namespace Api
     {
         private readonly string _topicName;
         private readonly ServiceBusClient _consumerConfig;
-        private readonly IServiceBusProcessor _consumer;
+        private readonly ServiceBusProcessor _consumer;
         private static readonly Random rand = new Random();
         private bool _disposed = false;
 
@@ -20,7 +20,7 @@ namespace Api
             this._consumer = new ConsumerBuilder<string, string>(this._consumerConfig).Build();
 
             // Subscribe to the single topic name
-            this._consumer.Subscribe(this._topicName);
+            this._consumer.StartProcessingAsync(this._topicName);
         }
 
         /// <summary>

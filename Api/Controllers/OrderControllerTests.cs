@@ -55,7 +55,7 @@ namespace Api.Tests
         }
 
         [Fact]
-        public void Constructor_ProducerConfigProvided_ShouldInitializeSuccessfully()
+        public void Constructor_ServiceBusClientProvided_ShouldInitializeSuccessfully()
         {
             // Arrange & Act
             var controller = new OrderController(_mockServiceBusClient.Object);
