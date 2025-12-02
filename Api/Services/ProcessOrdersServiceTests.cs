@@ -9,37 +9,33 @@ using System.Linq;
 using System.Threading;
 using Api.Services;
 using Api.Models;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Newtonsoft.Json;
 
 namespace Test
 {
     public class ProcessOrdersServiceTests
     {
-        private readonly ConsumerConfig _consumerConfig;
-        private readonly ProducerConfig _producerConfig;
+        private readonly ServiceBusProcessorOptions _processorOptions;
+        private readonly Mock<ServiceBusClient> _serviceBusClientMock;
 
         public ProcessOrdersServiceTests()
         {
             // Arrange - Setup test configurations
-            _consumerConfig = new ConsumerConfig
+            _processorOptions = new ServiceBusProcessorOptions
             {
-                BootstrapServers = "localhost:9092",
-                GroupId = "test-group",
-                AutoOffsetReset = AutoOffsetReset.Earliest
+                AutoCompleteMessages = false,
+                MaxConcurrentCalls = 1
             };
 
-            _producerConfig = new ProducerConfig
-            {
-                BootstrapServers = "localhost:9092"
-            };
+            _serviceBusClientMock = new Mock<ServiceBusClient>();
         }
 
         [Fact]
         public void Constructor_WithValidConfigs_ShouldCreateInstance()
         {
             // Arrange & Act
-            var service = new ProcessOrdersService(_consumerConfig, _producerConfig);
+            var service = new ProcessOrdersService(_processorOptions, _serviceBusClientMock.Object);
 
             // Assert
             service.Should().NotBeNull();
@@ -49,7 +45,7 @@ namespace Test
         public void Constructor_WithNullConsumerConfig_ShouldThrowArgumentNullException()
         {
             // Arrange & Act & Assert
-            Action act = () => new ProcessOrdersService(null, _producerConfig);
+            Action act = () => new ProcessOrdersService(null, _serviceBusClientMock.Object);
             act.Should().Throw<ArgumentNullException>();
         }
 
@@ -57,7 +53,7 @@ namespace Test
         public void Constructor_WithNullProducerConfig_ShouldThrowArgumentNullException()
         {
             // Arrange & Act & Assert
-            Action act = () => new ProcessOrdersService(_consumerConfig, null);
+            Action act = () => new ProcessOrdersService(_processorOptions, null);
             act.Should().Throw<ArgumentNullException>();
         }
 
@@ -73,7 +69,7 @@ namespace Test
         public async Task StartAsync_WithValidService_ShouldNotThrow()
         {
             // Arrange
-            var service = new ProcessOrdersService(_consumerConfig, _producerConfig);
+            var service = new ProcessOrdersService(_processorOptions, _serviceBusClientMock.Object);
             var cancellationToken = CancellationToken.None;
 
             // Act & Assert
@@ -85,7 +81,7 @@ namespace Test
         public async Task StopAsync_WithValidService_ShouldNotThrow()
         {
             // Arrange
-            var service = new ProcessOrdersService(_consumerConfig, _producerConfig);
+            var service = new ProcessOrdersService(_processorOptions, _serviceBusClientMock.Object);
             var cancellationToken = CancellationToken.None;
 
             // Act & Assert
@@ -97,7 +93,7 @@ namespace Test
         public async Task StartAsync_WithCancelledToken_ShouldHandleCancellation()
         {
             // Arrange
-            var service = new ProcessOrdersService(_consumerConfig, _producerConfig);
+            var service = new ProcessOrdersService(_processorOptions, _serviceBusClientMock.Object);
             var cancellationTokenSource = new CancellationTokenSource();
             cancellationTokenSource.Cancel();
 
@@ -110,7 +106,7 @@ namespace Test
         public async Task StopAsync_WithCancelledToken_ShouldHandleCancellation()
         {
             // Arrange
-            var service = new ProcessOrdersService(_consumerConfig, _producerConfig);
+            var service = new ProcessOrdersService(_processorOptions, _serviceBusClientMock.Object);
             var cancellationTokenSource = new CancellationTokenSource();
             cancellationTokenSource.Cancel();
 
@@ -119,4 +115,5 @@ namespace Test
             await act.Should().NotThrowAsync();
         }
     }
+}
 }

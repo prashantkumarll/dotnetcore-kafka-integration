@@ -3,20 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Api.Models;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 
 namespace Api.Controllers
 {
+namespace Api.Controllers
+{
     [Route("api/[controller]")]
     public class OrderController : ControllerBase
     {
-        private readonly ProducerConfig config;
-        public OrderController(ProducerConfig config)
+        private readonly ServiceBusClient client;
+        public OrderController(ServiceBusClient client)
         {
-            this.config = config;
-
+            this.client = client;
         }
         // POST api/values
         [HttpPost]
@@ -35,7 +36,7 @@ namespace Api.Controllers
             Console.WriteLine(serializedOrder);
             Console.WriteLine("=========");
 
-            var producer = new ProducerWrapper(this.config,"orderrequests");
+            var producer = new ProducerWrapper(this.client, "orderrequests");
             await producer.writeMessage(serializedOrder);
 
             return Created("TransactionId", "Your order is in progress");

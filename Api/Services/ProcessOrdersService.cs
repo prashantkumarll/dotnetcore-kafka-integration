@@ -6,13 +6,13 @@ namespace Api.Services
     using System;
     using Api.Models;
     using Newtonsoft.Json;
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
 
     public class ProcessOrdersService : BackgroundService
     {
-        private readonly ConsumerConfig consumerConfig;
-        private readonly ProducerConfig producerConfig;
-        public ProcessOrdersService(ConsumerConfig consumerConfig, ProducerConfig producerConfig)
+        private readonly ServiceBusClient consumerConfig;
+        private readonly ServiceBusClient producerConfig;
+        public ProcessOrdersService(ServiceBusClient consumerConfig, ServiceBusClient producerConfig)
         {
             this.producerConfig = producerConfig;
             this.consumerConfig = consumerConfig;

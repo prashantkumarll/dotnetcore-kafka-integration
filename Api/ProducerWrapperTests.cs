@@ -1,5 +1,5 @@
 using Api;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using FluentAssertions;
 using Moq;
 using System;
@@ -10,17 +10,11 @@ namespace Test
 {
     public class ProducerWrapperTests : IDisposable
     {
-        private readonly ProducerConfig _validConfig;
         private readonly string _validTopicName;
 
         public ProducerWrapperTests()
         {
             // Arrange - Setup valid test configuration
-            _validConfig = new ProducerConfig
-            {
-                BootstrapServers = "localhost:9092",
-                ClientId = "test-producer"
-            };
             _validTopicName = "test-topic";
         }
 
@@ -28,7 +22,8 @@ namespace Test
         public void Constructor_WithValidParameters_ShouldCreateInstance()
         {
             // Arrange & Act
-            using var producer = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            using var producer = new ProducerWrapper(mockClient.Object, _validTopicName);
 
             // Assert
             producer.Should().NotBeNull();
@@ -38,12 +33,12 @@ namespace Test
         public void Constructor_WithNullConfig_ShouldThrowArgumentNullException()
         {
             // Arrange
-            ProducerConfig nullConfig = default!;
+            ServiceBusClient nullClient = default!;
 
             // Act & Assert
-            var action = () => new ProducerWrapper(nullConfig, _validTopicName);
+            var action = () => new ProducerWrapper(nullClient, _validTopicName);
             action.Should().Throw<ArgumentNullException>()
-                .And.ParamName.Should().Be("config");
+                .And.ParamName.Should().Be("client");
         }
 
         [Fact]
@@ -51,9 +46,10 @@ namespace Test
         {
             // Arrange
             string nullTopicName = default!;
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act & Assert
-            var action = () => new ProducerWrapper(_validConfig, nullTopicName);
+            var action = () => new ProducerWrapper(mockClient.Object, nullTopicName);
             action.Should().Throw<ArgumentNullException>()
                 .And.ParamName.Should().Be("topicName");
         }
@@ -64,7 +60,8 @@ namespace Test
         public void Constructor_WithEmptyOrWhitespaceTopicName_ShouldThrowArgumentNullException(string topicName)
         {
             // Act & Assert
-            var action = () => new ProducerWrapper(_validConfig, topicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var action = () => new ProducerWrapper(mockClient.Object, topicName);
             action.Should().Throw<ArgumentNullException>()
                 .And.ParamName.Should().Be("topicName");
         }
@@ -73,7 +70,8 @@ namespace Test
         public async Task WriteMessage_WithValidMessage_ShouldCompleteSuccessfully()
         {
             // Arrange
-            using var producer = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            using var producer = new ProducerWrapper(mockClient.Object, _validTopicName);
             var testMessage = "test message";
 
             // Act
@@ -87,7 +85,8 @@ namespace Test
         public async Task WriteMessage_WithNullMessage_ShouldThrowArgumentNullException()
         {
             // Arrange
-            using var producer = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            using var producer = new ProducerWrapper(mockClient.Object, _validTopicName);
             string nullMessage = default!;
 
             // Act & Assert
@@ -103,7 +102,8 @@ namespace Test
         public async Task WriteMessage_WithVariousMessageFormats_ShouldHandleCorrectly(string message)
         {
             // Arrange
-            using var producer = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            using var producer = new ProducerWrapper(mockClient.Object, _validTopicName);
 
             // Act
             var action = async () => await producer.writeMessage(message);
@@ -116,7 +116,8 @@ namespace Test
         public async Task WriteMessage_WithLongMessage_ShouldHandleCorrectly()
         {
             // Arrange
-            using var producer = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            using var producer = new ProducerWrapper(mockClient.Object, _validTopicName);
             var longMessage = new string('a', 10000);
 
             // Act
@@ -130,7 +131,8 @@ namespace Test
         public void Dispose_WhenCalled_ShouldCompleteSuccessfully()
         {
             // Arrange
-            var producer = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var producer = new ProducerWrapper(mockClient.Object, _validTopicName);
 
             // Act
             var action = () => producer.Dispose();
@@ -143,7 +145,8 @@ namespace Test
         public void Dispose_WhenCalledMultipleTimes_ShouldNotThrow()
         {
             // Arrange
-            var producer = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var producer = new ProducerWrapper(mockClient.Object, _validTopicName);
 
             // Act
             producer.Dispose();
@@ -157,7 +160,8 @@ namespace Test
         public async Task WriteMessage_AfterDispose_ShouldThrowObjectDisposedException()
         {
             // Arrange
-            var producer = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var producer = new ProducerWrapper(mockClient.Object, _validTopicName);
             producer.Dispose();
 
             // Act & Assert
@@ -171,7 +175,8 @@ namespace Test
             // Arrange & Act
             var action = () =>
             {
-                using var producer = new ProducerWrapper(_validConfig, _validTopicName);
+                var mockClient = new Mock<ServiceBusClient>();
+                using var producer = new ProducerWrapper(mockClient.Object, _validTopicName);
                 // Producer should be disposed automatically
             };
 
@@ -184,4 +189,5 @@ namespace Test
             // Cleanup any test resources if needed
         }
     }
+}
 }

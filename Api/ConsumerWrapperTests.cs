@@ -1,5 +1,5 @@
 using Api;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using FluentAssertions;
 using Moq;
 using System;
@@ -9,18 +9,16 @@ namespace Test
 {
     public class ConsumerWrapperTests : IDisposable
     {
-        private readonly Mock<IConsumer<string, string>> _mockConsumer;
-        private readonly ConsumerConfig _validConfig;
+        private readonly ServiceBusProcessorOptions _validOptions;
         private readonly string _validTopicName;
 
         public ConsumerWrapperTests()
         {
-            _mockConsumer = new Mock<IConsumer<string, string>>();
-            _validConfig = new ConsumerConfig
+            _validOptions = new ServiceBusProcessorOptions
             {
-                BootstrapServers = "localhost:9092",
-                GroupId = "test-group",
-                AutoOffsetReset = AutoOffsetReset.Earliest
+                // Default options for tests; customize if needed
+                MaxConcurrentCalls = 1,
+                AutoCompleteMessages = true
             };
             _validTopicName = "test-topic";
         }
@@ -28,45 +26,51 @@ namespace Test
         [Fact]
         public void Constructor_WithValidParameters_ShouldCreateInstance()
         {
-            // Arrange & Act
-            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+            // Arrange
+            var mockClient = new Mock<ServiceBusClient>();
+
+            // Act
+            var wrapper = new ConsumerWrapper(mockClient.Object, _validTopicName, _validOptions);
 
             // Assert
             wrapper.Should().NotBeNull();
         }
 
         [Fact]
-        public void Constructor_WithNullConfig_ShouldThrowArgumentNullException()
+        public void Constructor_WithNullClient_ShouldThrowArgumentNullException()
         {
             // Arrange
-            ConsumerConfig nullConfig = default!;
+            var mockClient = new Mock<ServiceBusClient>();
+            ServiceBusClient nullClient = default!;
 
             // Act & Assert
-            var action = () => new ConsumerWrapper(nullConfig, _validTopicName);
+            var action = () => new ConsumerWrapper(nullClient, _validTopicName, _validOptions);
             action.Should().Throw<ArgumentNullException>()
-                .And.ParamName.Should().Be("config");
+                .And.ParamName.Should().Be("client");
         }
 
         [Fact]
         public void Constructor_WithNullTopicName_ShouldThrowArgumentNullException()
         {
             // Arrange
+            var mockClient = new Mock<ServiceBusClient>();
             string nullTopicName = default!;
 
             // Act & Assert
-            var action = () => new ConsumerWrapper(_validConfig, nullTopicName);
+            var action = () => new ConsumerWrapper(mockClient.Object, nullTopicName, _validOptions);
             action.Should().Throw<ArgumentNullException>()
                 .And.ParamName.Should().Be("topicName");
         }
 
         [Fact]
-        public void Constructor_WithEmptyTopicName_ShouldThrowArgumentNullException()
+        public void Constructor_WithEmptyTopicName_ShouldNotThrow()
         {
             // Arrange
+            var mockClient = new Mock<ServiceBusClient>();
             string emptyTopicName = string.Empty;
 
             // Act & Assert
-            var action = () => new ConsumerWrapper(_validConfig, emptyTopicName);
+            var action = () => new ConsumerWrapper(mockClient.Object, emptyTopicName, _validOptions);
             action.Should().NotThrow();
         }
 
@@ -74,15 +78,16 @@ namespace Test
         public void ReadMessage_WithValidMessage_ShouldReturnMessageValue()
         {
             // Arrange
-            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var wrapper = new ConsumerWrapper(mockClient.Object, _validTopicName, _validOptions);
             var expectedMessage = "test-message";
 
             // Act
-            var result = wrapper.readMessage();
+            var result = await wrapper.readMessage();
 
             // Assert
-            // Note: This test will return null in real scenario due to no actual Kafka broker
-            // In a real test environment, you would mock the consumer or use testcontainers
+            // Note: This test will return null in real scenario due to no actual Service Bus resource
+            // In a real test environment, you would mock the processor behavior
             result.Should().BeNull();
         }
 
@@ -90,10 +95,11 @@ namespace Test
         public void ReadMessage_WithTimeout_ShouldReturnNull()
         {
             // Arrange
-            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var wrapper = new ConsumerWrapper(mockClient.Object, _validTopicName, _validOptions);
 
             // Act
-            var result = wrapper.readMessage();
+            var result = await wrapper.readMessage();
 
             // Assert
             result.Should().BeNull();
@@ -103,12 +109,13 @@ namespace Test
         public void ReadMessage_MultipleCallsWithoutMessages_ShouldReturnNull()
         {
             // Arrange
-            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var wrapper = new ConsumerWrapper(mockClient.Object, _validTopicName, _validOptions);
 
             // Act
-            var result1 = wrapper.readMessage();
-            var result2 = wrapper.readMessage();
-            var result3 = wrapper.readMessage();
+            var result1 = await wrapper.readMessage();
+            var result2 = await wrapper.readMessage();
+            var result3 = await wrapper.readMessage();
 
             // Assert
             result1.Should().BeNull();
@@ -120,7 +127,8 @@ namespace Test
         public void Dispose_WhenCalled_ShouldNotThrow()
         {
             // Arrange
-            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var wrapper = new ConsumerWrapper(mockClient.Object, _validTopicName, _validOptions);
 
             // Act & Assert
             var action = () => wrapper.Dispose();
@@ -131,7 +139,8 @@ namespace Test
         public void Dispose_WhenCalledMultipleTimes_ShouldNotThrow()
         {
             // Arrange
-            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var wrapper = new ConsumerWrapper(mockClient.Object, _validTopicName, _validOptions);
 
             // Act & Assert
             var action = () =>
@@ -147,14 +156,15 @@ namespace Test
         public void ReadMessage_AfterDispose_ShouldHandleGracefully()
         {
             // Arrange
-            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            var wrapper = new ConsumerWrapper(mockClient.Object, _validTopicName, _validOptions);
             wrapper.Dispose();
 
             // Act & Assert
             var action = () => wrapper.readMessage();
             // The method should handle disposed state gracefully
-            // In practice, this might throw ObjectDisposedException
-            // but the current implementation doesn't check _disposed in readMessage
+            // In practice, this might throw ObjectDisposedException depending on implementation
+            // We don't assert here to allow implementation-specific behavior
         }
 
         [Theory]
@@ -164,8 +174,11 @@ namespace Test
         [InlineData("topic123")]
         public void Constructor_WithVariousTopicNames_ShouldCreateInstance(string topicName)
         {
-            // Arrange & Act
-            var wrapper = new ConsumerWrapper(_validConfig, topicName);
+            // Arrange
+            var mockClient = new Mock<ServiceBusClient>();
+
+            // Act
+            var wrapper = new ConsumerWrapper(mockClient.Object, topicName, _validOptions);
 
             // Assert
             wrapper.Should().NotBeNull();
@@ -175,22 +188,21 @@ namespace Test
         public void Constructor_WithDifferentConfigurations_ShouldCreateInstance()
         {
             // Arrange
-            var config1 = new ConsumerConfig
+            var mockClient = new Mock<ServiceBusClient>();
+            var options1 = new ServiceBusProcessorOptions
             {
-                BootstrapServers = "localhost:9092",
-                GroupId = "group1",
-                AutoOffsetReset = AutoOffsetReset.Latest
+                MaxConcurrentCalls = 1,
+                AutoCompleteMessages = true
             };
-            var config2 = new ConsumerConfig
+            var options2 = new ServiceBusProcessorOptions
             {
-                BootstrapServers = "localhost:9093",
-                GroupId = "group2",
-                AutoOffsetReset = AutoOffsetReset.Earliest
+                MaxConcurrentCalls = 5,
+                AutoCompleteMessages = false
             };
 
             // Act
-            var wrapper1 = new ConsumerWrapper(config1, "topic1");
-            var wrapper2 = new ConsumerWrapper(config2, "topic2");
+            var wrapper1 = new ConsumerWrapper(mockClient.Object, "topic1", options1);
+            var wrapper2 = new ConsumerWrapper(mockClient.Object, "topic2", options2);
 
             // Assert
             wrapper1.Should().NotBeNull();
@@ -202,4 +214,5 @@ namespace Test
             // Cleanup any test resources if needed
         }
     }
+}
 }
