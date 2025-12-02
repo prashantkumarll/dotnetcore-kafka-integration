@@ -2,7 +2,7 @@ using System;
 using Xunit;
 using Moq;
 using FluentAssertions;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 
 namespace Api.Tests
 {
@@ -12,7 +12,7 @@ namespace Api.Tests
         public void Constructor_ValidParameters_ShouldInitializeConsumer()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var mockConfig = new ServiceBusProcessorOptions { SessionId = "test-group" };
             var topicName = "test-topic";
 
             // Act
@@ -36,7 +36,7 @@ namespace Api.Tests
         public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var mockConfig = new ServiceBusProcessorOptions { SessionId = "test-group" };
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => new ConsumerWrapper(mockConfig, null));
@@ -46,9 +46,9 @@ namespace Api.Tests
         public void ReadMessage_NoMessageAvailable_ShouldReturnNull()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Returns((ConsumeResult<string, string>)null);
+            var mockConfig = new ServiceBusProcessorOptions { SessionId = "test-group" };
+            var mockConsumer = new Mock<ServiceBusProcessor>();
+            mockConsumer.Setup(c => c.ReceiveMessageAsync(It.IsAny<TimeSpan>())).Returns((ServiceBusReceivedMessagestring, string>)null);
 
             // Act
             var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
@@ -62,7 +62,7 @@ namespace Api.Tests
         public void Dispose_ShouldCloseAndDisposeConsumer()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var mockConfig = new ServiceBusProcessorOptions { SessionId = "test-group" };
             var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
 
             // Act
@@ -76,9 +76,9 @@ namespace Api.Tests
         public void ReadMessage_OperationCancelled_ShouldReturnNull()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Throws(new OperationCanceledException());
+            var mockConfig = new ServiceBusProcessorOptions { SessionId = "test-group" };
+            var mockConsumer = new Mock<ServiceBusProcessor>();
+            mockConsumer.Setup(c => c.ReceiveMessageAsync(It.IsAny<TimeSpan>())).Throws(new OperationCanceledException());
 
             // Act
             var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
@@ -89,12 +89,12 @@ namespace Api.Tests
         }
 
         [Fact]
-        public void ReadMessage_ConsumeException_ShouldReturnNull()
+        public void ReadMessage_ServiceBusException_ShouldReturnNull()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Throws(new Exception("Consume error"));
+            var mockConfig = new ServiceBusProcessorOptions { SessionId = "test-group" };
+            var mockConsumer = new Mock<ServiceBusProcessor>();
+            mockConsumer.Setup(c => c.ReceiveMessageAsync(It.IsAny<TimeSpan>())).Throws(new Exception("Consume error"));
 
             // Act
             var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
@@ -108,7 +108,7 @@ namespace Api.Tests
         public void Dispose_MultipleInvocations_ShouldNotThrow()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var mockConfig = new ServiceBusProcessorOptions { SessionId = "test-group" };
             var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
 
             // Act & Assert

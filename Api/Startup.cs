@@ -1,5 +1,6 @@
+using System;
 ﻿using Api.Services;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -28,8 +29,8 @@ namespace Api
             var producerConfigDict = Configuration.GetSection("producer").Get<Dictionary<string, string>>();
             var consumerConfigDict = Configuration.GetSection("consumer").Get<Dictionary<string, string>>();
 
-            var producerConfig = new ProducerConfig(producerConfigDict);
-            var consumerConfig = new ConsumerConfig(consumerConfigDict);
+            var producerConfig = new ServiceBusClient(producerConfigDict);
+            var consumerConfig = new ServiceBusProcessorOptions(consumerConfigDict);
 
             services.AddSingleton(producerConfig);
             services.AddSingleton(consumerConfig);

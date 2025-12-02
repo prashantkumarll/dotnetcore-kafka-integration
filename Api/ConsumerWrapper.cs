@@ -1,17 +1,17 @@
 namespace Api
 {
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
     using System;
 
     public class ConsumerWrapper : IDisposable
     {
         private readonly string _topicName;
-        private readonly ConsumerConfig _consumerConfig;
-        private readonly IConsumer<string, string> _consumer;
+        private readonly ServiceBusClient _consumerConfig;
+        private readonly IServiceBusProcessor _consumer;
         private static readonly Random rand = new Random();
         private bool _disposed = false;
 
-        public ConsumerWrapper(ConsumerConfig config, string topicName)
+        public ConsumerWrapper(ServiceBusClient config, string topicName)
         {
             this._topicName = topicName ?? throw new ArgumentNullException(nameof(topicName));
             this._consumerConfig = config ?? throw new ArgumentNullException(nameof(config));
