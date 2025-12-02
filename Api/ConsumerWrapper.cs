@@ -1,26 +1,34 @@
 namespace Api
 {
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
     using System;
+    using System.Threading.Tasks;
 
     public class ConsumerWrapper : IDisposable
     {
         private readonly string _topicName;
-        private readonly ConsumerConfig _consumerConfig;
-        private readonly IConsumer<string, string> _consumer;
+        private readonly ServiceBusClient _client;
+        private readonly ServiceBusProcessor _processor;
+        private TaskCompletionSource<string> _tcs;
         private static readonly Random rand = new Random();
         private bool _disposed = false;
 
-        public ConsumerWrapper(ConsumerConfig config, string topicName)
+        public ConsumerWrapper(ServiceBusClient client, string topicName, ServiceBusProcessorOptions options = null)
         {
             this._topicName = topicName ?? throw new ArgumentNullException(nameof(topicName));
-            this._consumerConfig = config ?? throw new ArgumentNullException(nameof(config));
+            this._client = client ?? throw new ArgumentNullException(nameof(client));
 
-            // Build the IConsumer instance from the builder
-            this._consumer = new ConsumerBuilder<string, string>(this._consumerConfig).Build();
+            var opts = options ?? new ServiceBusProcessorOptions();
 
-            // Subscribe to the single topic name
-            this._consumer.Subscribe(this._topicName);
+            // Create the processor for the specified entity
+            this._processor = this._client.CreateProcessor(this._topicName, opts);
+
+            // Register handlers
+            this._processor.ProcessMessageAsync += MessageHandler;
+            this._processor.ProcessErrorAsync += ErrorHandler;
+
+            // Start the processor synchronously from the constructor
+            this._processor.StartProcessingAsync().GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -28,45 +36,77 @@ namespace Api
         /// </summary>
         public string readMessage()
         {
-            // Use a short timeout so this method doesn't block indefinitely.
-            // You can adjust the timeout or add an overload that accepts CancellationToken.
             try
             {
-                var consumeResult = _consumer.Consume(TimeSpan.FromSeconds(1));
-                if (consumeResult == null) return null;
+                // Prepare a TaskCompletionSource which will be completed by the message handler.
+                _tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-                // New API exposes Message.Value
-                return consumeResult.Message?.Value;
+                // Wait up to one second for a message to arrive.
+                var task = _tcs.Task;
+                bool completed = task.Wait(TimeSpan.FromSeconds(1));
+                if (!completed) return null;
+
+                return task.Result;
             }
             catch (OperationCanceledException)
             {
-                // consumer was cancelled/closed - treat as no message
                 return null;
             }
-            catch (ConsumeException cex)
+            catch (Exception)
             {
                 // log or rethrow depending on your logging strategy
-                // throw; // uncomment if you want to bubble up
                 return null;
             }
         }
 
+        private async Task MessageHandler(ProcessMessageEventArgs args)
+        {
+            try
+            {
+                var body = args.Message.Body.ToString();
+
+                // Try to complete the waiting TaskCompletionSource if present.
+                var tcs = _tcs;
+                if (tcs != null && !tcs.Task.IsCompleted)
+                {
+                    tcs.TrySetResult(body);
+                }
+
+                // Optionally complete the message if auto-complete is disabled.
+                await args.CompleteMessageAsync(args.Message).ConfigureAwait(false);
+            }
+            catch
+            {
+                // ignore processing errors for now
+            }
+        }
+
+        private Task ErrorHandler(ProcessErrorEventArgs args)
+        {
+            // Optionally log the error. For now, just ignore.
+            return Task.CompletedTask;
+        }
+
         /// <summary>
-        /// Properly close and dispose the consumer.
+        /// Properly close and dispose the processor.
         /// </summary>
         public void Dispose()
         {
             if (_disposed) return;
             try
             {
-                // Attempt to leave the group cleanly
-                _consumer.Close();
+                this._processor.StopProcessingAsync().GetAwaiter().GetResult();
             }
             catch
             {
-                // ignore errors on close
+                // ignore errors on stop
             }
-            _consumer.Dispose();
+
+            this._processor.ProcessMessageAsync -= MessageHandler;
+            this._processor.ProcessErrorAsync -= ErrorHandler;
+
+            this._processor.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
             _disposed = true;
         }
     }

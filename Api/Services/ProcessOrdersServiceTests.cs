@@ -2,7 +2,6 @@ using System;
 using Xunit;
 using Moq;
 using FluentAssertions;
-using Confluent.Kafka;
 using Newtonsoft.Json;
 using Api.Services;
 using Api.Models;
@@ -11,13 +10,13 @@ namespace Api.Tests
 {
     public class ProcessOrdersServiceTests
     {
-        private readonly Mock<ConsumerConfig> _mockConsumerConfig;
-        private readonly Mock<ProducerConfig> _mockProducerConfig;
+        private readonly Mock<ServiceBusProcessorOptions> _mockConsumerConfig;
+        private readonly Mock<ServiceBusClient> _mockProducerConfig;
 
         public ProcessOrdersServiceTests()
         {
-            _mockConsumerConfig = new Mock<ConsumerConfig>();
-            _mockProducerConfig = new Mock<ProducerConfig>();
+            _mockConsumerConfig = new Mock<ServiceBusProcessorOptions>();
+            _mockProducerConfig = new Mock<ServiceBusClient>();
         }
 
         [Fact]
