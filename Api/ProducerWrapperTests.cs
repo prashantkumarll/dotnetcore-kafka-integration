@@ -1,5 +1,5 @@
 using Api;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using FluentAssertions;
 using Moq;
 using System;
@@ -10,15 +10,15 @@ namespace Api.Tests
 {
     public class ProducerWrapperTests : IDisposable
     {
-        private readonly ProducerConfig _validConfig;
+        private readonly ServiceBusClient _validConfig;
         private readonly string _validTopicName;
 
         public ProducerWrapperTests()
         {
             // Arrange - Setup valid test configuration
-            _validConfig = new ProducerConfig
+            _validConfig = new ServiceBusClient
             {
-                BootstrapServers = "localhost:9092",
+                ConnectionString = "localhost:9092",
                 ClientId = "test-producer"
             };
             _validTopicName = "test-topic";
@@ -38,7 +38,7 @@ namespace Api.Tests
         public void Constructor_WithNullConfig_ShouldThrowArgumentNullException()
         {
             // Arrange
-            ProducerConfig nullConfig = default!;
+            ServiceBusClient nullConfig = default!;
 
             // Act & Assert
             var action = () => new ProducerWrapper(nullConfig, _validTopicName);
