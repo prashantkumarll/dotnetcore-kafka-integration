@@ -2,7 +2,6 @@ using System;
 using Xunit;
 using Moq;
 using FluentAssertions;
-using Confluent.Kafka;
 
 namespace Api.Tests
 {
@@ -12,11 +11,12 @@ namespace Api.Tests
         public void Constructor_ValidConfig_ShouldInitializeConsumer()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
+            var mockClient = new Mock<ServiceBusClient>();
             var topicName = "test-topic";
+            ServiceBusProcessorOptions options = null;
 
             // Act
-            var consumerWrapper = new ConsumerWrapper(mockConfig, topicName);
+            var consumerWrapper = new ConsumerWrapper(mockClient.Object, topicName, options);
 
             // Assert
             consumerWrapper.Should().NotBeNull();
@@ -26,17 +26,19 @@ namespace Api.Tests
         public void Constructor_NullConfig_ShouldThrowArgumentNullException()
         {
             // Arrange & Act
-            Action act = () => new ConsumerWrapper(null, "test-topic");
+            Action act = () => new ConsumerWrapper(null, "test-topic", null);
 
             // Assert
-            act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("config");
+            act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("client");
         }
 
         [Fact]
         public void Constructor_NullTopicName_ShouldThrowArgumentNullException()
         {
             // Arrange & Act
-            Action act = () => new ConsumerWrapper(new ConsumerConfig(), null);
+            var mockClient = new Mock<ServiceBusClient>();
+            ServiceBusProcessorOptions options = null;
+            Action act = () => new ConsumerWrapper(mockClient.Object, null, options);
 
             // Assert
             act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("topicName");
@@ -46,11 +48,10 @@ namespace Api.Tests
         public void ReadMessage_NoMessageAvailable_ShouldReturnNull()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Returns((ConsumeResult<string, string>)null);
+            var mockClient = new Mock<ServiceBusClient>();
+            ServiceBusProcessorOptions options = null;
 
-            var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            var consumerWrapper = new ConsumerWrapper(mockClient.Object, "test-topic", options);
 
             // Act
             var result = consumerWrapper.readMessage();
@@ -63,8 +64,9 @@ namespace Api.Tests
         public void Dispose_ShouldCloseAndDisposeConsumer()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            var mockClient = new Mock<ServiceBusClient>();
+            ServiceBusProcessorOptions options = null;
+            var consumerWrapper = new ConsumerWrapper(mockClient.Object, "test-topic", options);
 
             // Act
             consumerWrapper.Dispose();
@@ -77,11 +79,10 @@ namespace Api.Tests
         public void ReadMessage_OperationCancelled_ShouldReturnNull()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Throws(new OperationCanceledException());
+            var mockClient = new Mock<ServiceBusClient>();
+            ServiceBusProcessorOptions options = null;
 
-            var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            var consumerWrapper = new ConsumerWrapper(mockClient.Object, "test-topic", options);
 
             // Act
             var result = consumerWrapper.readMessage();
@@ -94,11 +95,10 @@ namespace Api.Tests
         public void ReadMessage_ConsumeException_ShouldReturnNull()
         {
             // Arrange
-            var mockConfig = new ConsumerConfig { GroupId = "test-group" };
-            var mockConsumer = new Mock<IConsumer<string, string>>();
-            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>())).Throws(new ConsumeException(new ConsumeResult<string, string>()));
+            var mockClient = new Mock<ServiceBusClient>();
+            ServiceBusProcessorOptions options = null;
 
-            var consumerWrapper = new ConsumerWrapper(mockConfig, "test-topic");
+            var consumerWrapper = new ConsumerWrapper(mockClient.Object, "test-topic", options);
 
             // Act
             var result = consumerWrapper.readMessage();
