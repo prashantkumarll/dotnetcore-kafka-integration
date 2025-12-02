@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Api.Services;
 using Api.Models;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 
@@ -14,30 +14,25 @@ namespace Test
 {
     public class ProcessOrdersServiceTests
     {
-        private readonly ConsumerConfig _consumerConfig;
-        private readonly ProducerConfig _producerConfig;
+        private readonly ServiceBusProcessorOptions _processorOptions;
+        private readonly Mock<ServiceBusClient> _serviceBusClientMock;
 
         public ProcessOrdersServiceTests()
         {
             // Arrange - Setup test configurations
-            _consumerConfig = new ConsumerConfig
+            _processorOptions = new ServiceBusProcessorOptions
             {
-                BootstrapServers = "localhost:9092",
-                GroupId = "test-group",
-                AutoOffsetReset = AutoOffsetReset.Earliest
+                MaxConcurrentCalls = 1
             };
 
-            _producerConfig = new ProducerConfig
-            {
-                BootstrapServers = "localhost:9092"
-            };
+            _serviceBusClientMock = new Mock<ServiceBusClient>();
         }
 
         [Fact]
         public void Constructor_WithValidConfigs_ShouldCreateInstance()
         {
             // Arrange & Act
-            var service = new ProcessOrdersService(_consumerConfig, _producerConfig);
+            var service = new ProcessOrdersService(_processorOptions, _serviceBusClientMock.Object);
 
             // Assert
             service.Should().NotBeNull();
@@ -48,7 +43,7 @@ namespace Test
         public void Constructor_WithNullConsumerConfig_ShouldThrowArgumentNullException()
         {
             // Arrange & Act & Assert
-            Action act = () => new ProcessOrdersService(null, _producerConfig);
+            Action act = () => new ProcessOrdersService(null, _serviceBusClientMock.Object);
             act.Should().Throw<ArgumentNullException>();
         }
 
@@ -56,7 +51,7 @@ namespace Test
         public void Constructor_WithNullProducerConfig_ShouldThrowArgumentNullException()
         {
             // Arrange & Act & Assert
-            Action act = () => new ProcessOrdersService(_consumerConfig, null);
+            Action act = () => new ProcessOrdersService(_processorOptions, null);
             act.Should().Throw<ArgumentNullException>();
         }
 
@@ -72,7 +67,7 @@ namespace Test
         public void ProcessOrdersService_ShouldInheritFromBackgroundService()
         {
             // Arrange & Act
-            var service = new ProcessOrdersService(_consumerConfig, _producerConfig);
+            var service = new ProcessOrdersService(_processorOptions, _serviceBusClientMock.Object);
 
             // Assert
             service.Should().BeAssignableTo<BackgroundService>();
@@ -82,7 +77,7 @@ namespace Test
         public void ProcessOrdersService_ShouldImplementIHostedService()
         {
             // Arrange & Act
-            var service = new ProcessOrdersService(_consumerConfig, _producerConfig);
+            var service = new ProcessOrdersService(_processorOptions, _serviceBusClientMock.Object);
 
             // Assert
             service.Should().BeAssignableTo<IHostedService>();
@@ -92,18 +87,14 @@ namespace Test
         public void ProcessOrdersService_WithEmptyBootstrapServers_ShouldCreateInstance()
         {
             // Arrange
-            var emptyConsumerConfig = new ConsumerConfig
+            var emptyProcessorOptions = new ServiceBusProcessorOptions
             {
-                BootstrapServers = string.Empty,
-                GroupId = "test-group"
+                MaxConcurrentCalls = 1
             };
-            var emptyProducerConfig = new ProducerConfig
-            {
-                BootstrapServers = string.Empty
-            };
+            var emptyServiceBusClientMock = new Mock<ServiceBusClient>();
 
             // Act
-            var service = new ProcessOrdersService(emptyConsumerConfig, emptyProducerConfig);
+            var service = new ProcessOrdersService(emptyProcessorOptions, emptyServiceBusClientMock.Object);
 
             // Assert
             service.Should().NotBeNull();
@@ -113,15 +104,16 @@ namespace Test
         public void ProcessOrdersService_WithMinimalConfigs_ShouldCreateInstance()
         {
             // Arrange
-            var minimalConsumerConfig = new ConsumerConfig();
-            var minimalProducerConfig = new ProducerConfig();
+            var minimalProcessorOptions = new ServiceBusProcessorOptions();
+            var minimalServiceBusClientMock = new Mock<ServiceBusClient>();
 
             // Act
-            var service = new ProcessOrdersService(minimalConsumerConfig, minimalProducerConfig);
+            var service = new ProcessOrdersService(minimalProcessorOptions, minimalServiceBusClientMock.Object);
 
             // Assert
             service.Should().NotBeNull();
             service.Should().BeOfType<ProcessOrdersService>();
         }
     }
+}
 }

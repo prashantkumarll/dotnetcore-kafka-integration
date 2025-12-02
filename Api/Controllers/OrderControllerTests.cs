@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Api.Controllers;
 using Api.Models;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Moq;
@@ -16,28 +16,24 @@ namespace Api.Tests.Controllers
 {
     public class OrderControllerTests
     {
-        private readonly ProducerConfig _mockConfig;
+        private readonly Mock<ServiceBusClient> _mockClient;
         private readonly OrderController _controller;
 
         public OrderControllerTests()
         {
-            // Arrange - Setup mock configuration
-            _mockConfig = new ProducerConfig
-            {
-                BootstrapServers = "localhost:9092",
-                ClientId = "test-client"
-            };
-            _controller = new OrderController(_mockConfig);
+            // Arrange - Setup mock ServiceBus client
+            _mockClient = new Mock<ServiceBusClient>();
+            _controller = new OrderController(_mockClient.Object);
         }
 
         [Fact]
         public void Constructor_WithValidConfig_ShouldInitializeController()
         {
             // Arrange
-            var config = new ProducerConfig { BootstrapServers = "localhost:9092" };
+            var client = new Mock<ServiceBusClient>();
 
             // Act
-            var controller = new OrderController(config);
+            var controller = new OrderController(client.Object);
 
             // Assert
             controller.Should().NotBeNull();
