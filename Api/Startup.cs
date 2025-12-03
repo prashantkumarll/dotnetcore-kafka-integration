@@ -1,11 +1,12 @@
 ﻿using Api.Services;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Api
 {
@@ -24,15 +25,27 @@ namespace Api
             // Register controllers (replaces AddMvc/CompatibilityVersion in old templates)
             services.AddControllers();
 
-            // Bind Kafka configs from configuration - use Get<Dictionary> for dot-notation support
+            // Bind Service Bus configs from configuration - use Get<Dictionary> for dot-notation support
             var producerConfigDict = Configuration.GetSection("producer").Get<Dictionary<string, string>>();
             var consumerConfigDict = Configuration.GetSection("consumer").Get<Dictionary<string, string>>();
 
-            var producerConfig = new ProducerConfig(producerConfigDict);
-            var consumerConfig = new ConsumerConfig(consumerConfigDict);
+            // Create ServiceBusClient from configuration (replaces ProducerConfig)
+            var serviceBusConnection = Configuration.GetValue<string>("ServiceBus:ConnectionString");
+            var serviceBusClient = new ServiceBusClient(serviceBusConnection);
 
-            services.AddSingleton(producerConfig);
-            services.AddSingleton(consumerConfig);
+            // Create processor options (replaces ConsumerConfig)
+            var processorOptions = new ServiceBusProcessorOptions();
+            if (consumerConfigDict != null && consumerConfigDict.TryGetValue("maxConcurrentCalls", out var mcc) && int.TryParse(mcc, out var max))
+            {
+                processorOptions.MaxConcurrentCalls = max;
+            }
+            if (consumerConfigDict != null && consumerConfigDict.TryGetValue("autoCompleteMessages", out var ac) && bool.TryParse(ac, out var autoComplete))
+            {
+                processorOptions.AutoCompleteMessages = autoComplete;
+            }
+
+            services.AddSingleton(serviceBusClient);
+            services.AddSingleton(processorOptions);
 
             // Register the hosted/background service
             services.AddHostedService<ProcessOrdersService>();
