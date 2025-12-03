@@ -6,16 +6,14 @@ namespace Api.Services
     using System;
     using Api.Models;
     using Newtonsoft.Json;
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
 
     public class ProcessOrdersService : BackgroundService
     {
-        private readonly ConsumerConfig consumerConfig;
-        private readonly ProducerConfig producerConfig;
-        public ProcessOrdersService(ConsumerConfig consumerConfig, ProducerConfig producerConfig)
+        private readonly ServiceBusClient serviceBusClient;
+        public ProcessOrdersService(ServiceBusClient serviceBusClient)
         {
-            this.producerConfig = producerConfig;
-            this.consumerConfig = consumerConfig;
+            this.serviceBusClient = serviceBusClient;
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -23,9 +21,10 @@ namespace Api.Services
             
             while (!stoppingToken.IsCancellationRequested)
             {
-                using (var consumerHelper = new ConsumerWrapper(consumerConfig, "orderrequests"))
+                // Create consumer wrapper with ServiceBusClient
+                using (var consumerHelper = new ConsumerWrapper(serviceBusClient, "orderrequests"))
                 {
-                    string orderRequest = consumerHelper.readMessage();
+                    string orderRequest = await consumerHelper.readMessage();
 
                     // Check if message is null or empty before deserializing
                     if (string.IsNullOrWhiteSpace(orderRequest))
@@ -48,7 +47,7 @@ namespace Api.Services
                     order.status = OrderStatus.COMPLETED;
 
                     //Write to ReadyToShip Queue
-                    using (var producerWrapper = new ProducerWrapper(producerConfig, "readytoship"))
+                    using (var producerWrapper = new ProducerWrapper(serviceBusClient, "readytoship"))
                     {
                         await producerWrapper.writeMessage(JsonConvert.SerializeObject(order));
                     }

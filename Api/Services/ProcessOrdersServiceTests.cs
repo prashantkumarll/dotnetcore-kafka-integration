@@ -2,7 +2,6 @@ using System;
 using Xunit;
 using Moq;
 using FluentAssertions;
-using Confluent.Kafka;
 using Newtonsoft.Json;
 using Api.Services;
 using Api.Models;
@@ -11,20 +10,20 @@ namespace Api.Tests
 {
     public class ProcessOrdersServiceTests
     {
-        private readonly Mock<ConsumerConfig> _mockConsumerConfig;
-        private readonly Mock<ProducerConfig> _mockProducerConfig;
+        private readonly Mock<ServiceBusProcessorOptions> _mockProcessorOptions;
+        private readonly Mock<ServiceBusClient> _mockServiceBusClient;
 
         public ProcessOrdersServiceTests()
         {
-            _mockConsumerConfig = new Mock<ConsumerConfig>();
-            _mockProducerConfig = new Mock<ProducerConfig>();
+            _mockProcessorOptions = new Mock<ServiceBusProcessorOptions>();
+            _mockServiceBusClient = new Mock<ServiceBusClient>();
         }
 
         [Fact]
         public void Constructor_ShouldInitializeWithValidConfigs()
         {
             // Arrange & Act
-            var service = new ProcessOrdersService(_mockConsumerConfig.Object, _mockProducerConfig.Object);
+            var service = new ProcessOrdersService(_mockProcessorOptions.Object, _mockServiceBusClient.Object);
 
             // Assert
             service.Should().NotBeNull();
@@ -34,10 +33,10 @@ namespace Api.Tests
         public async Task ExecuteAsync_WithNullOrderRequest_ShouldContinue()
         {
             // Arrange
-            var mockConsumerWrapper = new Mock<ConsumerWrapper>(_mockConsumerConfig.Object, "orderrequests");
+            var mockConsumerWrapper = new Mock<ConsumerWrapper>(_mockProcessorOptions.Object, "orderrequests");
             mockConsumerWrapper.Setup(x => x.readMessage()).Returns(string.Empty);
 
-            var service = new ProcessOrdersService(_mockConsumerConfig.Object, _mockProducerConfig.Object);
+            var service = new ProcessOrdersService(_mockProcessorOptions.Object, _mockServiceBusClient.Object);
 
             // Act & Assert
             await service.StartAsync(default);
@@ -55,12 +54,12 @@ namespace Api.Tests
 
             var serializedOrder = JsonConvert.SerializeObject(orderRequest);
 
-            var mockConsumerWrapper = new Mock<ConsumerWrapper>(_mockConsumerConfig.Object, "orderrequests");
+            var mockConsumerWrapper = new Mock<ConsumerWrapper>(_mockProcessorOptions.Object, "orderrequests");
             mockConsumerWrapper.Setup(x => x.readMessage()).Returns(serializedOrder);
 
-            var mockProducerWrapper = new Mock<ProducerWrapper>(_mockProducerConfig.Object, "readytoship");
+            var mockProducerWrapper = new Mock<ProducerWrapper>(_mockServiceBusClient.Object, "readytoship");
 
-            var service = new ProcessOrdersService(_mockConsumerConfig.Object, _mockProducerConfig.Object);
+            var service = new ProcessOrdersService(_mockProcessorOptions.Object, _mockServiceBusClient.Object);
 
             // Act & Assert
             await service.StartAsync(default);
@@ -114,16 +113,13 @@ namespace Api.Tests
         }
 
         [Fact]
-        public void ProducerConfig_ShouldBeConfigurable()
+        public void ServiceBusClient_ShouldBeConfigurable()
         {
             // Arrange
-            var config = new ProducerConfig 
-            { 
-                BootstrapServers = "localhost:9092" 
-            };
+            var client = new ServiceBusClient("Endpoint=sb://localhost/;SharedAccessKeyName=key;SharedAccessKey=secret");
 
             // Assert
-            config.BootstrapServers.Should().Be("localhost:9092");
+            client.Should().NotBeNull();
         }
     }
 }
