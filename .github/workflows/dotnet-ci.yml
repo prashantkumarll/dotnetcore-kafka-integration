@@ -9,26 +9,6 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
-    services:
-      zookeeper:
-        image: bitnami/zookeeper
-        ports:
-          - 2181:2181
-        env:
-          ALLOW_ANONYMOUS_LOGIN: yes
-      
-      kafka:
-        image: bitnami/kafka
-        ports:
-          - 9092:9092
-        env:
-          KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-          ALLOW_PLAINTEXT_LISTENER: yes
-          KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
-          KAFKA_CFG_LISTENERS: CLIENT://:9093,EXTERNAL://:9092
-          KAFKA_CFG_ADVERTISED_LISTENERS: CLIENT://kafka:9093,EXTERNAL://localhost:9092
-          KAFKA_CFG_INTER_BROKER_LISTENER_NAME: CLIENT
 
     steps:
     - name: Checkout code
@@ -38,6 +18,28 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
+    
+    - name: Start Kafka and Zookeeper
+      run: |
+        docker network create kafka-network || true
+        docker run -d --name zookeeper --network kafka-network \
+          -p 2181:2181 \
+          -e ALLOW_ANONYMOUS_LOGIN=yes \
+          bitnami/zookeeper:latest
+        
+        sleep 5
+        
+        docker run -d --name kafka --network kafka-network \
+          -p 9092:9092 \
+          -e KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181 \
+          -e ALLOW_PLAINTEXT_LISTENER=yes \
+          -e KAFKA_CFG_LISTENERS=PLAINTEXT://:9092 \
+          -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
+          bitnami/kafka:latest
+        
+        echo "Waiting for Kafka to be ready..."
+        timeout 60 bash -c 'until docker exec kafka kafka-topics.sh --bootstrap-server localhost:9092 --list 2>/dev/null; do sleep 2; done'
+        echo "Kafka is ready!"
         
     - name: Restore dependencies
       run: dotnet restore
@@ -45,14 +47,15 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
       
-    # - name: Wait for Kafka to be ready
-    #   run: |
-    #     echo "Waiting for Kafka to be ready..."
-    #     timeout 60 bash -c 'until nc -z localhost 9092; do sleep 1; done'
-    #     sleep 10
-      
     - name: Run tests
       run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+    
+    - name: Stop Kafka and Zookeeper
+      if: always()
+      run: |
+        docker stop kafka zookeeper || true
+        docker rm kafka zookeeper || true
+        docker network rm kafka-network || true
       
     - name: Publish test results
       uses: actions/upload-artifact@v4
