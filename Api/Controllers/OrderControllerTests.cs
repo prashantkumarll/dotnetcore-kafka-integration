@@ -4,7 +4,7 @@ using Xunit;
 using Moq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Newtonsoft.Json;
 using Api.Controllers;
 using Api.Models;
@@ -13,13 +13,13 @@ namespace Api.Tests
 {
     public class OrderControllerTests
     {
-        private readonly Mock<ProducerConfig> _mockProducerConfig;
+        private readonly Mock<ServiceBusClient> _mockServiceBusClient;
         private readonly Mock<ProducerWrapper> _mockProducerWrapper;
 
         public OrderControllerTests()
         {
-            _mockProducerConfig = new Mock<ProducerConfig>();
-            _mockProducerWrapper = new Mock<ProducerWrapper>(_mockProducerConfig.Object, "orderrequests");
+            _mockServiceBusClient = new Mock<ServiceBusClient>();
+            _mockProducerWrapper = new Mock<ProducerWrapper>(_mockServiceBusClient.Object, "orderrequests");
         }
 
         [Fact]
@@ -33,7 +33,7 @@ namespace Api.Tests
 
             _mockProducerWrapper.Setup(p => p.writeMessage(It.IsAny<string>())).Returns(Task.CompletedTask);
 
-            var controller = new OrderController(_mockProducerConfig.Object);
+            var controller = new OrderController(_mockServiceBusClient.Object);
 
             // Act
             var result = await controller.PostAsync(orderRequest);
@@ -50,7 +50,7 @@ namespace Api.Tests
         {
             // Arrange
             var orderRequest = new OrderRequest();
-            var controller = new OrderController(_mockProducerConfig.Object);
+            var controller = new OrderController(_mockServiceBusClient.Object);
             controller.ModelState.AddModelError("key", "error message");
 
             // Act
@@ -64,7 +64,7 @@ namespace Api.Tests
         public async Task PostAsync_NullOrderRequest_ThrowsArgumentNullException()
         {
             // Arrange
-            var controller = new OrderController(_mockProducerConfig.Object);
+            var controller = new OrderController(_mockServiceBusClient.Object);
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentNullException>(() => controller.PostAsync(null));
@@ -74,7 +74,7 @@ namespace Api.Tests
         public void Constructor_ValidProducerConfig_InitializesController()
         {
             // Arrange & Act
-            var controller = new OrderController(_mockProducerConfig.Object);
+            var controller = new OrderController(_mockServiceBusClient.Object);
 
             // Assert
             controller.Should().NotBeNull();
@@ -87,7 +87,7 @@ namespace Api.Tests
             var orderRequest = new OrderRequest();
             _mockProducerWrapper.Setup(p => p.writeMessage(It.IsAny<string>())).ThrowsAsync(new Exception("Producer write failed"));
 
-            var controller = new OrderController(_mockProducerConfig.Object);
+            var controller = new OrderController(_mockServiceBusClient.Object);
 
             // Act & Assert
             await Assert.ThrowsAsync<Exception>(() => controller.PostAsync(orderRequest));
