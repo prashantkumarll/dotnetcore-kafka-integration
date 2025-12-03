@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Api.Models;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 
@@ -12,8 +12,8 @@ namespace Api.Controllers
     [Route("api/[controller]")]
     public class OrderController : ControllerBase
     {
-        private readonly ProducerConfig config;
-        public OrderController(ProducerConfig config)
+        private readonly ServiceBusClient config;
+        public OrderController(ServiceBusClient config)
         {
             this.config = config;
 

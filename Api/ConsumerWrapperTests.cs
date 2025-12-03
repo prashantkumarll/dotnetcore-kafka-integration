@@ -1,5 +1,5 @@
 using Api;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using FluentAssertions;
 using Moq;
 using System;
@@ -10,18 +10,18 @@ namespace Test
 {
     public class ConsumerWrapperTests : IDisposable
     {
-        private readonly Mock<IConsumer<string, string>> _mockConsumer;
-        private readonly ConsumerConfig _validConfig;
+        private readonly Mock<ServiceBusProcessor> _mockConsumer;
+        private readonly ServiceBusProcessorOptions _validConfig;
         private readonly string _validTopicName;
 
         public ConsumerWrapperTests()
         {
-            _mockConsumer = new Mock<IConsumer<string, string>>();
-            _validConfig = new ConsumerConfig
+            _mockConsumer = new Mock<ServiceBusProcessor>();
+            _validConfig = new ServiceBusProcessorOptions
             {
-                BootstrapServers = "localhost:9092",
-                GroupId = "test-group",
-                AutoOffsetReset = AutoOffsetReset.Earliest
+                ConnectionString = "localhost:9092",
+                SessionId = "test-group",
+                ReceiveMode = ReceiveMode.Earliest
             };
             _validTopicName = "test-topic";
         }
@@ -40,7 +40,7 @@ namespace Test
         public void Constructor_WithNullConfig_ShouldThrowArgumentNullException()
         {
             // Arrange
-            ConsumerConfig nullConfig = default!;
+            ServiceBusProcessorOptions nullConfig = default!;
 
             // Act & Assert
             var action = () => new ConsumerWrapper(nullConfig, _validTopicName);
@@ -114,7 +114,7 @@ namespace Test
         }
 
         [Fact]
-        public void ReadMessage_WhenConsumeExceptionOccurs_ShouldReturnNull()
+        public void ReadMessage_WhenServiceBusExceptionOccurs_ShouldReturnNull()
         {
             // Arrange
             var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);

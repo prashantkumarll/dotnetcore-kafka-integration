@@ -6,29 +6,29 @@ using System.Threading;
 using System.Threading.Tasks;
 using Api.Services;
 using Api.Models;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Hosting;
 
 namespace Test
 {
     public class ProcessOrdersServiceTests
     {
-        private readonly ConsumerConfig _consumerConfig;
-        private readonly ProducerConfig _producerConfig;
+        private readonly ServiceBusProcessorOptions _consumerConfig;
+        private readonly ServiceBusClient _producerConfig;
 
         public ProcessOrdersServiceTests()
         {
             // Arrange - Setup test configurations
-            _consumerConfig = new ConsumerConfig
+            _consumerConfig = new ServiceBusProcessorOptions
             {
-                BootstrapServers = "localhost:9092",
-                GroupId = "test-group",
-                AutoOffsetReset = AutoOffsetReset.Earliest
+                ConnectionString = "localhost:9092",
+                SessionId = "test-group",
+                ReceiveMode = ReceiveMode.Earliest
             };
 
-            _producerConfig = new ProducerConfig
+            _producerConfig = new ServiceBusClient
             {
-                BootstrapServers = "localhost:9092"
+                ConnectionString = "localhost:9092"
             };
         }
 
@@ -44,7 +44,7 @@ namespace Test
         }
 
         [Fact]
-        public void Constructor_WithNullConsumerConfig_ShouldThrowArgumentNullException()
+        public void Constructor_WithNullServiceBusProcessorOptions_ShouldThrowArgumentNullException()
         {
             // Arrange & Act & Assert
             Action act = () => new ProcessOrdersService(null, _producerConfig);
@@ -52,7 +52,7 @@ namespace Test
         }
 
         [Fact]
-        public void Constructor_WithNullProducerConfig_ShouldThrowArgumentNullException()
+        public void Constructor_WithNullServiceBusClient_ShouldThrowArgumentNullException()
         {
             // Arrange & Act & Assert
             Action act = () => new ProcessOrdersService(_consumerConfig, null);
