@@ -1,5 +1,5 @@
-using Api;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
+using Moq;
 using FluentAssertions;
 using System;
 using System.Threading.Tasks;
@@ -10,16 +10,11 @@ namespace Test
     public class ProducerWrapperTests : IDisposable
     {
         private ProducerWrapper _producerWrapper;
-        private readonly ProducerConfig _validConfig;
         private readonly string _validTopicName;
 
         public ProducerWrapperTests()
         {
-            _validConfig = new ProducerConfig
-            {
-                BootstrapServers = "localhost:9092",
-                ClientId = "test-client"
-            };
+            // ServiceBusClient will be mocked per test
             _validTopicName = "test-topic";
         }
 
@@ -27,7 +22,8 @@ namespace Test
         public void Constructor_WithValidParameters_ShouldCreateInstance()
         {
             // Arrange & Act
-            _producerWrapper = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            _producerWrapper = new ProducerWrapper(mockClient.Object, _validTopicName);
 
             // Assert
             _producerWrapper.Should().NotBeNull();
@@ -37,14 +33,14 @@ namespace Test
         public void Constructor_WithNullConfig_ShouldThrowArgumentNullException()
         {
             // Arrange
-            ProducerConfig nullConfig = null;
+            ServiceBusClient nullClient = null;
 
             // Act
-            Action act = () => new ProducerWrapper(nullConfig, _validTopicName);
+            Action act = () => new ProducerWrapper(nullClient, _validTopicName);
 
             // Assert
             act.Should().Throw<ArgumentNullException>()
-                .And.ParamName.Should().Be("config");
+                .And.ParamName.Should().Be("client");
         }
 
         [Fact]
@@ -54,7 +50,8 @@ namespace Test
             string nullTopicName = null;
 
             // Act
-            Action act = () => new ProducerWrapper(_validConfig, nullTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            Action act = () => new ProducerWrapper(mockClient.Object, nullTopicName);
 
             // Assert
             act.Should().Throw<ArgumentNullException>()
@@ -65,7 +62,8 @@ namespace Test
         public async Task WriteMessage_WithValidMessage_ShouldCompleteSuccessfully()
         {
             // Arrange
-            _producerWrapper = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            _producerWrapper = new ProducerWrapper(mockClient.Object, _validTopicName);
             var testMessage = "test message";
 
             // Act
@@ -79,7 +77,8 @@ namespace Test
         public async Task WriteMessage_WithNullMessage_ShouldThrowArgumentNullException()
         {
             // Arrange
-            _producerWrapper = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            _producerWrapper = new ProducerWrapper(mockClient.Object, _validTopicName);
             string nullMessage = null;
 
             // Act
@@ -97,7 +96,8 @@ namespace Test
         public async Task WriteMessage_WithVariousValidMessages_ShouldCompleteSuccessfully(string message)
         {
             // Arrange
-            _producerWrapper = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            _producerWrapper = new ProducerWrapper(mockClient.Object, _validTopicName);
 
             // Act
             Func<Task> act = async () => await _producerWrapper.writeMessage(message);
@@ -110,7 +110,8 @@ namespace Test
         public void Dispose_WhenCalled_ShouldNotThrow()
         {
             // Arrange
-            _producerWrapper = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            _producerWrapper = new ProducerWrapper(mockClient.Object, _validTopicName);
 
             // Act
             Action act = () => _producerWrapper.Dispose();
@@ -123,7 +124,8 @@ namespace Test
         public void Dispose_WhenCalledMultipleTimes_ShouldNotThrow()
         {
             // Arrange
-            _producerWrapper = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            _producerWrapper = new ProducerWrapper(mockClient.Object, _validTopicName);
 
             // Act
             Action act = () =>
@@ -141,7 +143,8 @@ namespace Test
         public async Task WriteMessage_AfterDispose_ShouldThrowObjectDisposedException()
         {
             // Arrange
-            _producerWrapper = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            _producerWrapper = new ProducerWrapper(mockClient.Object, _validTopicName);
             _producerWrapper.Dispose();
 
             // Act
@@ -158,7 +161,8 @@ namespace Test
             var emptyTopicName = "";
 
             // Act
-            Action act = () => _producerWrapper = new ProducerWrapper(_validConfig, emptyTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            Action act = () => _producerWrapper = new ProducerWrapper(mockClient.Object, emptyTopicName);
 
             // Assert
             act.Should().NotThrow();
@@ -169,13 +173,10 @@ namespace Test
         public void Constructor_WithMinimalConfig_ShouldCreateInstance()
         {
             // Arrange
-            var minimalConfig = new ProducerConfig
-            {
-                BootstrapServers = "localhost:9092"
-            };
+            var mockClient = new Mock<ServiceBusClient>();
 
             // Act
-            Action act = () => _producerWrapper = new ProducerWrapper(minimalConfig, _validTopicName);
+            Action act = () => _producerWrapper = new ProducerWrapper(mockClient.Object, _validTopicName);
 
             // Assert
             act.Should().NotThrow();
@@ -186,7 +187,8 @@ namespace Test
         public async Task WriteMessage_WithLongMessage_ShouldCompleteSuccessfully()
         {
             // Arrange
-            _producerWrapper = new ProducerWrapper(_validConfig, _validTopicName);
+            var mockClient = new Mock<ServiceBusClient>();
+            _producerWrapper = new ProducerWrapper(mockClient.Object, _validTopicName);
             var longMessage = new string('a', 1000);
 
             // Act

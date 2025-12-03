@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Api.Services;
 using Api.Models;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Newtonsoft.Json;
 using Api;
 
@@ -14,24 +14,24 @@ namespace Test
 {
     public class ProcessOrdersServiceTests
     {
-        private readonly Mock<ConsumerConfig> _mockConsumerConfig;
-        private readonly Mock<ProducerConfig> _mockProducerConfig;
+        private readonly Mock<ServiceBusProcessorOptions> _mockServiceBusProcessorOptions;
+        private readonly Mock<ServiceBusClient> _mockServiceBusClient;
         private readonly ProcessOrdersService _service;
 
         public ProcessOrdersServiceTests()
         {
             // Arrange - Setup mock configurations
-            _mockConsumerConfig = new Mock<ConsumerConfig>();
-            _mockProducerConfig = new Mock<ProducerConfig>();
-            _service = new ProcessOrdersService(_mockConsumerConfig.Object, _mockProducerConfig.Object);
+            _mockServiceBusProcessorOptions = new Mock<ServiceBusProcessorOptions>();
+            _mockServiceBusClient = new Mock<ServiceBusClient>();
+            _service = new ProcessOrdersService(_mockServiceBusProcessorOptions.Object, _mockServiceBusClient.Object);
         }
 
         [Fact]
         public void Constructor_WithValidConfigs_ShouldCreateInstance()
         {
             // Arrange
-            var consumerConfig = new ConsumerConfig();
-            var producerConfig = new ProducerConfig();
+            var consumerConfig = new ServiceBusProcessorOptions();
+            var producerConfig = new ServiceBusClient(connectionString);
 
             // Act
             var service = new ProcessOrdersService(consumerConfig, producerConfig);
@@ -41,10 +41,10 @@ namespace Test
         }
 
         [Fact]
-        public void Constructor_WithNullConsumerConfig_ShouldThrowArgumentNullException()
+        public void Constructor_WithNullServiceBusProcessorOptions_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var producerConfig = new ProducerConfig();
+            var producerConfig = new ServiceBusClient(connectionString);
 
             // Act & Assert
             Action act = () => new ProcessOrdersService(default!, producerConfig);
@@ -52,10 +52,10 @@ namespace Test
         }
 
         [Fact]
-        public void Constructor_WithNullProducerConfig_ShouldThrowArgumentNullException()
+        public void Constructor_WithNullServiceBusClient_ShouldThrowArgumentNullException()
         {
             // Arrange
-            var consumerConfig = new ConsumerConfig();
+            var consumerConfig = new ServiceBusProcessorOptions();
 
             // Act & Assert
             Action act = () => new ProcessOrdersService(consumerConfig, default!);
