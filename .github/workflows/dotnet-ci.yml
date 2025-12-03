@@ -49,13 +49,6 @@ jobs:
       
     - name: Run tests
       run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
-    
-    - name: Stop Kafka and Zookeeper
-      if: always()
-      run: |
-        docker stop kafka zookeeper || true
-        docker rm kafka zookeeper || true
-        docker network rm kafka-network || true
       
     - name: Publish test results
       uses: actions/upload-artifact@v4
