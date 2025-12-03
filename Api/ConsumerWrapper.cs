@@ -1,72 +1,137 @@
 namespace Api
 {
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
     using System;
+    using System.Threading;
+    using System.Threading.Tasks;
 
-    public class ConsumerWrapper : IDisposable
+    public class ConsumerWrapper : IDisposable, IAsyncDisposable
     {
         private readonly string _topicName;
-        private readonly ConsumerConfig _consumerConfig;
-        private readonly IConsumer<string, string> _consumer;
-        private static readonly Random rand = new Random();
+        private readonly ServiceBusProcessor _processor;
         private bool _disposed = false;
 
-        public ConsumerWrapper(ConsumerConfig config, string topicName)
+        public ConsumerWrapper(ServiceBusClient client, string topicName, ServiceBusProcessorOptions options = null)
         {
             this._topicName = topicName ?? throw new ArgumentNullException(nameof(topicName));
-            this._consumerConfig = config ?? throw new ArgumentNullException(nameof(config));
+            if (client == null) throw new ArgumentNullException(nameof(client));
 
-            // Build the IConsumer instance from the builder
-            this._consumer = new ConsumerBuilder<string, string>(this._consumerConfig).Build();
-
-            // Subscribe to the single topic name
-            this._consumer.Subscribe(this._topicName);
+            // Create the ServiceBusProcessor from the provided client.
+            this._processor = client.CreateProcessor(this._topicName, options ?? new ServiceBusProcessorOptions());
         }
 
         /// <summary>
         /// Read a single message, waits up to 1 second. Returns null if no message was available.
         /// </summary>
-        public string readMessage()
+        public async Task<string> readMessage()
         {
-            // Use a short timeout so this method doesn't block indefinitely.
-            // You can adjust the timeout or add an overload that accepts CancellationToken.
+            var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            Func<ProcessMessageEventArgs, Task> messageHandler = async args =>
+            {
+                try
+                {
+                    var body = args.Message.Body.ToString();
+                    // Complete the message so it won't be received again.
+                    await args.CompleteMessageAsync(args.Message).ConfigureAwait(false);
+                    tcs.TrySetResult(body);
+                }
+                catch
+                {
+                    // Preserve error handling strategy - return null to caller
+                    tcs.TrySetResult(null);
+                }
+            };
+
+            Func<ProcessErrorEventArgs, Task> errorHandler = args =>
+            {
+                // On errors, treat as no message available and allow caller to decide
+                tcs.TrySetResult(null);
+                return Task.CompletedTask;
+            };
+
+            // Register handlers
+            _processor.ProcessMessageAsync += messageHandler;
+            _processor.ProcessErrorAsync += errorHandler;
+
             try
             {
-                var consumeResult = _consumer.Consume(TimeSpan.FromSeconds(1));
-                if (consumeResult == null) return null;
+                await _processor.StartProcessingAsync().ConfigureAwait(false);
 
-                // New API exposes Message.Value
-                return consumeResult.Message?.Value;
+                var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(1))).ConfigureAwait(false);
+
+                if (completedTask == tcs.Task)
+                {
+                    return await tcs.Task.ConfigureAwait(false);
+                }
+                else
+                {
+                    return null;
+                }
             }
-            catch (OperationCanceledException)
+            catch (TaskCanceledException)
             {
-                // consumer was cancelled/closed - treat as no message
                 return null;
             }
-            catch (ConsumeException cex)
+            finally
             {
-                // log or rethrow depending on your logging strategy
-                // throw; // uncomment if you want to bubble up
-                return null;
+                try
+                {
+                    await _processor.StopProcessingAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                // Unregister handlers
+                _processor.ProcessMessageAsync -= messageHandler;
+                _processor.ProcessErrorAsync -= errorHandler;
             }
         }
 
         /// <summary>
-        /// Properly close and dispose the consumer.
+        /// Properly close and dispose the processor.
         /// </summary>
         public void Dispose()
         {
             if (_disposed) return;
             try
             {
-                // Attempt to leave the group cleanly
-                _consumer.Close();
+                _processor?.StopProcessingAsync().GetAwaiter().GetResult();
             }
             catch
             {
-                // ignore errors on close
+                // ignore errors on stop
             }
-            _consumer.Dispose();
+
+            try
+            {
+                _processor?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            _disposed = true;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_disposed) return;
+            try
+            {
+                if (_processor != null)
+                {
+                    await _processor.StopProcessingAsync().ConfigureAwait(false);
+                    await _processor.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
             _disposed = true;
         }
     }
