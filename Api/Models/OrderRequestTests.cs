@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Xunit;
 using FluentAssertions;
 using Api.Models;
@@ -30,7 +31,7 @@ namespace Api.Tests
         public void OrderStatus_ShouldHaveCorrectEnumValues()
         {
             // Arrange & Act
-            var enumValues = Enum.GetValues(typeof(OrderStatus));
+            var enumValues = Enum.GetValues(typeof(OrderStatus)).Cast<OrderStatus>().ToArray();
 
             // Assert
             enumValues.Should().Contain(OrderStatus.IN_PROGRESS);
@@ -89,6 +90,136 @@ namespace Api.Tests
             orderRequest.status = OrderStatus.COMPLETED;
 
             // Assert
+            orderRequest.status.Should().Be(OrderStatus.COMPLETED);
+        }
+
+        [Fact]
+        public void OrderRequest_ShouldAllowNegativeId()
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                id = -1,
+                productname = "TestProduct",
+                quantity = 5,
+                status = OrderStatus.IN_PROGRESS
+            };
+
+            // Assert
+            orderRequest.id.Should().Be(-1);
+        }
+
+        [Fact]
+        public void OrderRequest_ShouldAllowEmptyProductName()
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                id = 1,
+                productname = "",
+                quantity = 5,
+                status = OrderStatus.COMPLETED
+            };
+
+            // Assert
+            orderRequest.productname.Should().Be("");
+        }
+
+        [Fact]
+        public void OrderRequest_ShouldAllowNegativeQuantity()
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                id = 1,
+                productname = "TestProduct",
+                quantity = -5,
+                status = OrderStatus.REJECTED
+            };
+
+            // Assert
+            orderRequest.quantity.Should().Be(-5);
+        }
+
+        [Theory]
+        [InlineData(int.MaxValue)]
+        [InlineData(int.MinValue)]
+        [InlineData(0)]
+        public void OrderRequest_ShouldHandleBoundaryValues_ForId(int boundaryId)
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                id = boundaryId,
+                productname = "BoundaryTest",
+                quantity = 1,
+                status = OrderStatus.IN_PROGRESS
+            };
+
+            // Assert
+            orderRequest.id.Should().Be(boundaryId);
+        }
+
+        [Theory]
+        [InlineData(int.MaxValue)]
+        [InlineData(int.MinValue)]
+        [InlineData(0)]
+        public void OrderRequest_ShouldHandleBoundaryValues_ForQuantity(int boundaryQuantity)
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                id = 1,
+                productname = "BoundaryTest",
+                quantity = boundaryQuantity,
+                status = OrderStatus.COMPLETED
+            };
+
+            // Assert
+            orderRequest.quantity.Should().Be(boundaryQuantity);
+        }
+
+        [Fact]
+        public void OrderStatus_ShouldHaveExactlyThreeValues()
+        {
+            // Arrange & Act
+            var enumValues = Enum.GetValues(typeof(OrderStatus)).Cast<OrderStatus>().ToArray();
+
+            // Assert
+            enumValues.Should().HaveCount(3);
+        }
+
+        [Fact]
+        public void OrderStatus_ShouldHaveCorrectEnumOrder()
+        {
+            // Arrange & Act
+            var enumValues = Enum.GetValues(typeof(OrderStatus)).Cast<OrderStatus>().ToArray();
+
+            // Assert
+            enumValues[0].Should().Be(OrderStatus.IN_PROGRESS);
+            enumValues[1].Should().Be(OrderStatus.COMPLETED);
+            enumValues[2].Should().Be(OrderStatus.REJECTED);
+        }
+
+        [Fact]
+        public void OrderRequest_ShouldAllowPropertyChaining()
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                id = 100,
+                productname = "ChainedProduct",
+                quantity = 25,
+                status = OrderStatus.IN_PROGRESS
+            };
+
+            orderRequest.status = OrderStatus.COMPLETED;
+            orderRequest.quantity = 30;
+
+            // Assert
+            orderRequest.id.Should().Be(100);
+            orderRequest.productname.Should().Be("ChainedProduct");
+            orderRequest.quantity.Should().Be(30);
             orderRequest.status.Should().Be(OrderStatus.COMPLETED);
         }
     }
