@@ -1,29 +1,24 @@
 namespace Api
 {
-    using Confluent.Kafka;
+    using Azure.Messaging.ServiceBus;
     using System;
     using System.Threading.Tasks;
 
     public class ProducerWrapper : IDisposable
     {
         private readonly string _topicName;
-        private readonly ProducerConfig _config;
-        private readonly IProducer<string, string> _producer;
+        private readonly ServiceBusClient _client;
+        private readonly ServiceBusSender _sender;
         private static readonly Random rand = new Random();
         private bool _disposed = false;
 
-        public ProducerWrapper(ProducerConfig config, string topicName)
+        public ProducerWrapper(ServiceBusClient client, string topicName)
         {
             _topicName = topicName ?? throw new ArgumentNullException(nameof(topicName));
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _client = client ?? throw new ArgumentNullException(nameof(client));
 
-            // Use ProducerBuilder and set an error handler
-            _producer = new ProducerBuilder<string, string>(_config)
-                            .SetErrorHandler((prod, err) =>
-                            {
-                                Console.WriteLine($"Producer error: {err.Reason}");
-                            })
-                            .Build();
+            // Create a sender for the topic
+            _sender = _client.CreateSender(_topicName);
         }
 
         /// <summary>
@@ -34,22 +29,21 @@ namespace Api
             if (message == null) throw new ArgumentNullException(nameof(message));
             try
             {
-                var msg = new Message<string, string>
+                var key = rand.Next(5).ToString();
+                var sbMessage = new ServiceBusMessage(message)
                 {
-                    Key = rand.Next(5).ToString(),
-                    Value = message
+                    MessageId = key
                 };
 
-                // ProduceAsync returns DeliveryResult<TKey, TValue>
-                var dr = await _producer.ProduceAsync(_topicName, msg).ConfigureAwait(false);
+                // Send the message to the Service Bus topic
+                await _sender.SendMessageAsync(sbMessage).ConfigureAwait(false);
 
-                // New API exposes the produced message on dr.Message
-                Console.WriteLine($"KAFKA => Delivered '{dr.Message?.Value}' to '{dr.TopicPartitionOffset}'");
+                Console.WriteLine($"SB => Sent message with MessageId '{sbMessage.MessageId}' to '{_topicName}'");
             }
-            catch (ProduceException<string, string> pex)
+            catch (Exception ex)
             {
                 // You can log more details or rethrow based on your strategy
-                Console.WriteLine($"Produce failed: {pex.Error.Reason}");
+                Console.WriteLine($"Send failed: {ex.Message}");
                 throw;
             }
         }
@@ -60,15 +54,14 @@ namespace Api
 
             try
             {
-                // Block until outstanding messages are sent (or timeout)
-                _producer.Flush(TimeSpan.FromSeconds(10));
+                // Best effort dispose of the sender
+                _sender?.DisposeAsync().AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch
             {
-                // ignore flush errors - best effort
+                // ignore dispose errors - best effort
             }
 
-            _producer.Dispose();
             _disposed = true;
         }
     }
