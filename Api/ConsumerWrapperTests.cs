@@ -10,14 +10,12 @@ namespace Test
 {
     public class ConsumerWrapperTests : IDisposable
     {
-        private readonly Mock<IConsumer<string, string>> _mockConsumer;
         private readonly ConsumerConfig _validConfig;
         private readonly string _validTopicName;
         private bool _disposed = false;
 
         public ConsumerWrapperTests()
         {
-            _mockConsumer = new Mock<IConsumer<string, string>>();
             _validConfig = new ConsumerConfig
             {
                 BootstrapServers = "localhost:9092",
@@ -63,7 +61,7 @@ namespace Test
         }
 
         [Fact]
-        public void Constructor_WithEmptyTopicName_ShouldThrowArgumentNullException()
+        public void Constructor_WithEmptyTopicName_ShouldNotThrow()
         {
             // Arrange
             string emptyTopicName = string.Empty;
@@ -191,6 +189,149 @@ namespace Test
 
             // Assert
             action.Should().NotThrow();
+            wrapper.Dispose();
+        }
+
+        [Fact]
+        public void ReadMessage_ConsecutiveCalls_ShouldNotThrow()
+        {
+            // Arrange
+            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+
+            // Act & Assert
+            var result1 = wrapper.readMessage();
+            var result2 = wrapper.readMessage();
+            var result3 = wrapper.readMessage();
+
+            result1.Should().BeNull();
+            result2.Should().BeNull();
+            result3.Should().BeNull();
+            
+            wrapper.Dispose();
+        }
+
+        [Fact]
+        public void Constructor_WithMinimalConfig_ShouldCreateInstance()
+        {
+            // Arrange
+            var minimalConfig = new ConsumerConfig
+            {
+                BootstrapServers = "localhost:9092",
+                GroupId = "minimal-group"
+            };
+
+            // Act
+            var wrapper = new ConsumerWrapper(minimalConfig, "minimal-topic");
+
+            // Assert
+            wrapper.Should().NotBeNull();
+            wrapper.Dispose();
+        }
+
+        [Fact]
+        public void Constructor_WithComplexConfig_ShouldCreateInstance()
+        {
+            // Arrange
+            var complexConfig = new ConsumerConfig
+            {
+                BootstrapServers = "localhost:9092",
+                GroupId = "complex-group",
+                AutoOffsetReset = AutoOffsetReset.Latest,
+                EnableAutoCommit = false,
+                SessionTimeoutMs = 30000,
+                MaxPollIntervalMs = 300000
+            };
+
+            // Act
+            var wrapper = new ConsumerWrapper(complexConfig, "complex-topic");
+
+            // Assert
+            wrapper.Should().NotBeNull();
+            wrapper.Dispose();
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData(" ")]
+        [InlineData("t")]
+        [InlineData("n")]
+        public void Constructor_WithWhitespaceTopicNames_ShouldNotThrow(string topicName)
+        {
+            // Arrange & Act
+            var action = () => new ConsumerWrapper(_validConfig, topicName);
+
+            // Assert
+            action.Should().NotThrow();
+            
+            var wrapper = new ConsumerWrapper(_validConfig, topicName);
+            wrapper.Dispose();
+        }
+
+        [Fact]
+        public void ReadMessage_OnDisposedInstance_ShouldNotThrow()
+        {
+            // Arrange
+            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+            wrapper.Dispose();
+
+            // Act
+            var result = wrapper.readMessage();
+
+            // Assert
+            // Should handle gracefully even after disposal
+            var action = () => wrapper.readMessage();
+            action.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Dispose_OnAlreadyDisposedInstance_ShouldBeIdempotent()
+        {
+            // Arrange
+            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+            
+            // Act - dispose multiple times
+            wrapper.Dispose();
+            wrapper.Dispose();
+            wrapper.Dispose();
+
+            // Assert - should not throw
+            var action = () => wrapper.Dispose();
+            action.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Constructor_WithLongTopicName_ShouldAcceptValidName()
+        {
+            // Arrange
+            var longTopicName = "very-long-topic-name-with-many-characters-and-dashes-to-test-boundary-conditions";
+
+            // Act
+            var wrapper = new ConsumerWrapper(_validConfig, longTopicName);
+
+            // Assert
+            wrapper.Should().NotBeNull();
+            wrapper.Dispose();
+        }
+
+        [Fact]
+        public void ReadMessage_RepeatedCallsWithShortInterval_ShouldHandleTimeout()
+        {
+            // Arrange
+            var wrapper = new ConsumerWrapper(_validConfig, _validTopicName);
+
+            // Act - multiple rapid calls
+            var results = new string[5];
+            for (int i = 0; i < 5; i++)
+            {
+                results[i] = wrapper.readMessage();
+            }
+
+            // Assert
+            foreach (var result in results)
+            {
+                result.Should().BeNull(); // No broker running in test
+            }
+            
             wrapper.Dispose();
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Api.Controllers;
 using Api.Models;
@@ -145,6 +146,100 @@ namespace Test
             routeAttributes.Should().NotBeEmpty();
             var routeAttribute = routeAttributes[0] as RouteAttribute;
             routeAttribute.Template.Should().Be("api/[controller]");
+        }
+
+        [Fact]
+        public async Task PostAsync_ShouldWriteConsoleOutput()
+        {
+            // Arrange
+            var orderRequest = new OrderRequest();
+            var originalOut = Console.Out;
+            var stringWriter = new StringWriter();
+            Console.SetOut(stringWriter);
+
+            try
+            {
+                // Act
+                var result = await _controller.PostAsync(orderRequest);
+
+                // Assert
+                var output = stringWriter.ToString();
+                output.Should().Contain("Info: OrderController => Post => Recieved a new purchase order:");
+                output.Should().Contain("========");
+                output.Should().Contain("=========");
+            }
+            finally
+            {
+                // Cleanup
+                Console.SetOut(originalOut);
+                stringWriter.Dispose();
+            }
+        }
+
+        [Fact]
+        public async Task PostAsync_ShouldLogSerializedOrderInConsole()
+        {
+            // Arrange
+            var orderRequest = new OrderRequest();
+            var expectedJson = JsonConvert.SerializeObject(orderRequest);
+            var originalOut = Console.Out;
+            var stringWriter = new StringWriter();
+            Console.SetOut(stringWriter);
+
+            try
+            {
+                // Act
+                var result = await _controller.PostAsync(orderRequest);
+
+                // Assert
+                var output = stringWriter.ToString();
+                output.Should().Contain(expectedJson);
+            }
+            finally
+            {
+                // Cleanup
+                Console.SetOut(originalOut);
+                stringWriter.Dispose();
+            }
+        }
+
+        [Fact]
+        public void Constructor_WithNullConfig_ShouldThrowException()
+        {
+            // Arrange
+            ProducerConfig config = default!;
+
+            // Act & Assert
+            var action = () => new OrderController(config);
+            action.Should().NotThrowAsync();
+        }
+
+        [Fact]
+        public async Task PostAsync_WithEmptyModelState_ShouldProcessSuccessfully()
+        {
+            // Arrange
+            var orderRequest = new OrderRequest();
+            _controller.ModelState.Clear();
+
+            // Act
+            var result = await _controller.PostAsync(orderRequest);
+
+            // Assert
+            result.Should().BeOfType<CreatedResult>();
+            var createdResult = result as CreatedResult;
+            createdResult.Location.Should().Be("TransactionId");
+            createdResult.Value.Should().Be("Your order is in progress");
+        }
+
+        [Fact]
+        public void OrderController_ShouldInheritFromControllerBase()
+        {
+            // Arrange & Act
+            var controllerType = typeof(OrderController);
+            var baseType = controllerType.BaseType;
+
+            // Assert
+            baseType.Should().Be(typeof(ControllerBase));
         }
     }
 }

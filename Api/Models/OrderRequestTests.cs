@@ -3,6 +3,8 @@ using FluentAssertions;
 using Api.Models;
 using System;
 using System.Linq;
+using System.ComponentModel.DataAnnotations;
+using System.Collections.Generic;
 
 namespace Test
 {
@@ -233,6 +235,112 @@ namespace Test
 
             // Act & Assert
             order1.Should().BeEquivalentTo(order2);
+        }
+
+        [Fact]
+        public void OrderRequest_PropertyInitialization_ShouldAllowObjectInitializer()
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                id = 999,
+                productname = "Initialized Product",
+                quantity = 25,
+                status = OrderStatus.REJECTED
+            };
+
+            // Assert
+            orderRequest.id.Should().Be(999);
+            orderRequest.productname.Should().Be("Initialized Product");
+            orderRequest.quantity.Should().Be(25);
+            orderRequest.status.Should().Be(OrderStatus.REJECTED);
+        }
+
+        [Fact]
+        public void OrderStatus_EnumUnderlyingValues_ShouldBeSequential()
+        {
+            // Arrange & Act & Assert
+            ((int)OrderStatus.IN_PROGRESS).Should().Be(0);
+            ((int)OrderStatus.COMPLETED).Should().Be(1);
+            ((int)OrderStatus.REJECTED).Should().Be(2);
+        }
+
+        [Fact]
+        public void OrderRequest_PropertyTypes_ShouldBeCorrect()
+        {
+            // Arrange
+            var orderRequest = new OrderRequest();
+
+            // Act & Assert
+            orderRequest.id.Should().BeOfType<int>();
+            orderRequest.quantity.Should().BeOfType<int>();
+            orderRequest.status.Should().BeOfType<OrderStatus>();
+        }
+
+        [Theory]
+        [InlineData(int.MaxValue)]
+        [InlineData(int.MinValue)]
+        public void Id_SetBoundaryValues_ShouldAcceptExtremeValues(int boundaryValue)
+        {
+            // Arrange
+            var orderRequest = new OrderRequest();
+
+            // Act
+            orderRequest.id = boundaryValue;
+
+            // Assert
+            orderRequest.id.Should().Be(boundaryValue);
+        }
+
+        [Theory]
+        [InlineData(int.MaxValue)]
+        [InlineData(int.MinValue)]
+        public void Quantity_SetBoundaryValues_ShouldAcceptExtremeValues(int boundaryValue)
+        {
+            // Arrange
+            var orderRequest = new OrderRequest();
+
+            // Act
+            orderRequest.quantity = boundaryValue;
+
+            // Assert
+            orderRequest.quantity.Should().Be(boundaryValue);
+        }
+
+        [Fact]
+        public void OrderRequest_MultipleInstances_ShouldBeIndependent()
+        {
+            // Arrange
+            var order1 = new OrderRequest { id = 1, productname = "Product1", quantity = 10, status = OrderStatus.IN_PROGRESS };
+            var order2 = new OrderRequest { id = 2, productname = "Product2", quantity = 20, status = OrderStatus.COMPLETED };
+
+            // Act
+            order1.id = 100;
+            order1.productname = "Modified Product";
+
+            // Assert
+            order1.id.Should().Be(100);
+            order1.productname.Should().Be("Modified Product");
+            order2.id.Should().Be(2);
+            order2.productname.Should().Be("Product2");
+        }
+
+        [Fact]
+        public void OrderStatus_ParseFromString_ShouldWorkCorrectly()
+        {
+            // Arrange & Act & Assert
+            Enum.Parse<OrderStatus>("IN_PROGRESS").Should().Be(OrderStatus.IN_PROGRESS);
+            Enum.Parse<OrderStatus>("COMPLETED").Should().Be(OrderStatus.COMPLETED);
+            Enum.Parse<OrderStatus>("REJECTED").Should().Be(OrderStatus.REJECTED);
+        }
+
+        [Fact]
+        public void OrderStatus_IsDefined_ShouldReturnTrueForValidValues()
+        {
+            // Arrange & Act & Assert
+            Enum.IsDefined(typeof(OrderStatus), OrderStatus.IN_PROGRESS).Should().BeTrue();
+            Enum.IsDefined(typeof(OrderStatus), OrderStatus.COMPLETED).Should().BeTrue();
+            Enum.IsDefined(typeof(OrderStatus), OrderStatus.REJECTED).Should().BeTrue();
         }
     }
 }
