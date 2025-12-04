@@ -56,5 +56,40 @@ namespace Api.Tests
             // Assert
             consumerWrapper.Should().NotBeNull(); // Ensures no exception during disposal
         }
+
+        [Fact]
+        public void ReadMessage_WhenNoMessageAvailable_ShouldReturnNull()
+        {
+            // Arrange
+            var config = new ConsumerConfig { GroupId = "test-group", BootstrapServers = "localhost:9092" };
+            var topicName = "test-topic";
+            var consumerWrapper = new ConsumerWrapper(config, topicName);
+
+            // Act
+            var result = consumerWrapper.readMessage();
+
+            // Assert
+            result.Should().BeNull();
+            
+            // Cleanup
+            consumerWrapper.Dispose();
+        }
+
+        [Fact]
+        public void Dispose_CalledMultipleTimes_ShouldNotThrow()
+        {
+            // Arrange
+            var config = new ConsumerConfig { GroupId = "test-group" };
+            var topicName = "test-topic";
+            var consumerWrapper = new ConsumerWrapper(config, topicName);
+
+            // Act & Assert
+            Action act = () => {
+                consumerWrapper.Dispose();
+                consumerWrapper.Dispose();
+            };
+            
+            act.Should().NotThrow();
+        }
     }
 }

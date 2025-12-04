@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Xunit;
 using FluentAssertions;
 using Moq;
@@ -50,6 +51,38 @@ namespace Api.Tests
             // Assert
             order.productname.Should().Be("Test Product");
             order.status.Should().Be(OrderStatus.IN_PROGRESS);
+        }
+
+        [Fact]
+        public void Constructor_ShouldAcceptNullConfigs()
+        {
+            // Arrange
+            ConsumerConfig consumerConfig = null;
+            ProducerConfig producerConfig = null;
+
+            // Act
+            var service = new ProcessOrdersService(consumerConfig, producerConfig);
+
+            // Assert
+            service.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void OrderRequest_ShouldAllowStatusChange()
+        {
+            // Arrange
+            var order = new OrderRequest
+            {
+                productname = "Sample Product",
+                status = OrderStatus.IN_PROGRESS
+            };
+
+            // Act
+            order.status = OrderStatus.COMPLETED;
+
+            // Assert
+            order.status.Should().Be(OrderStatus.COMPLETED);
+            order.productname.Should().Be("Sample Product");
         }
     }
 }

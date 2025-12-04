@@ -34,6 +34,16 @@ namespace Api.Tests
         }
 
         [Fact]
+        public void Constructor_WithNullTopicName_ShouldThrowArgumentNullException()
+        {
+            // Arrange
+            var config = new ProducerConfig();
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ProducerWrapper(config, null));
+        }
+
+        [Fact]
         public async Task WriteMessage_WithValidMessage_ShouldNotThrowException()
         {
             // Arrange
@@ -44,11 +54,77 @@ namespace Api.Tests
             // Act
             using (var producerWrapper = new ProducerWrapper(config, topicName))
             {
-                Func<Task> act = async () => await producerWrapper.writeMessage(message);
+                var act = async () => await producerWrapper.writeMessage(message);
 
                 // Assert
                 await act.Should().NotThrowAsync();
             }
+        }
+
+        [Fact]
+        public async Task WriteMessage_WithNullMessage_ShouldThrowArgumentNullException()
+        {
+            // Arrange
+            var config = new ProducerConfig();
+            var topicName = "test-topic";
+
+            // Act & Assert
+            using (var producerWrapper = new ProducerWrapper(config, topicName))
+            {
+                var act = async () => await producerWrapper.writeMessage(null);
+                await act.Should().ThrowAsync<ArgumentNullException>();
+            }
+        }
+
+        [Fact]
+        public async Task WriteMessage_WithEmptyMessage_ShouldNotThrowException()
+        {
+            // Arrange
+            var config = new ProducerConfig();
+            var topicName = "test-topic";
+            var message = string.Empty;
+
+            // Act
+            using (var producerWrapper = new ProducerWrapper(config, topicName))
+            {
+                var act = async () => await producerWrapper.writeMessage(message);
+
+                // Assert
+                await act.Should().NotThrowAsync();
+            }
+        }
+
+        [Fact]
+        public void Dispose_ShouldNotThrowException()
+        {
+            // Arrange
+            var config = new ProducerConfig();
+            var topicName = "test-topic";
+            var producerWrapper = new ProducerWrapper(config, topicName);
+
+            // Act
+            var act = () => producerWrapper.Dispose();
+
+            // Assert
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Dispose_CalledMultipleTimes_ShouldNotThrowException()
+        {
+            // Arrange
+            var config = new ProducerConfig();
+            var topicName = "test-topic";
+            var producerWrapper = new ProducerWrapper(config, topicName);
+
+            // Act
+            var act = () => {
+                producerWrapper.Dispose();
+                producerWrapper.Dispose();
+            };
+
+            // Assert
+            act.Should().NotThrow();
         }
     }
 }

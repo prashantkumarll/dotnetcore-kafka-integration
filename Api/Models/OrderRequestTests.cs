@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using Xunit;
 using FluentAssertions;
 using Api.Models;
@@ -49,6 +51,69 @@ namespace Api.Tests.Models
             orderRequest.productname.Should().BeNull();
             orderRequest.quantity.Should().Be(0);
             orderRequest.status.Should().Be(OrderStatus.IN_PROGRESS);
+        }
+
+        [Fact]
+        public void OrderRequest_ShouldAllowSettingAllStatusValues()
+        {
+            // Arrange
+            var orderRequest = new OrderRequest();
+
+            // Act & Assert - Test COMPLETED status
+            orderRequest.status = OrderStatus.COMPLETED;
+            orderRequest.status.Should().Be(OrderStatus.COMPLETED);
+
+            // Act & Assert - Test REJECTED status
+            orderRequest.status = OrderStatus.REJECTED;
+            orderRequest.status.Should().Be(OrderStatus.REJECTED);
+
+            // Act & Assert - Test IN_PROGRESS status
+            orderRequest.status = OrderStatus.IN_PROGRESS;
+            orderRequest.status.Should().Be(OrderStatus.IN_PROGRESS);
+        }
+
+        [Fact]
+        public void OrderRequest_ShouldHandleNegativeValues()
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                id = -1,
+                quantity = -5
+            };
+
+            // Assert
+            orderRequest.id.Should().Be(-1);
+            orderRequest.quantity.Should().Be(-5);
+        }
+
+        [Fact]
+        public void OrderRequest_ShouldHandleEmptyProductName()
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                productname = ""
+            };
+
+            // Assert
+            orderRequest.productname.Should().Be("");
+            orderRequest.productname.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void OrderRequest_ShouldHandleMaxIntegerValues()
+        {
+            // Arrange & Act
+            var orderRequest = new OrderRequest
+            {
+                id = int.MaxValue,
+                quantity = int.MaxValue
+            };
+
+            // Assert
+            orderRequest.id.Should().Be(int.MaxValue);
+            orderRequest.quantity.Should().Be(int.MaxValue);
         }
     }
 }
