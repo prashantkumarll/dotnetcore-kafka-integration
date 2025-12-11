@@ -1,11 +1,11 @@
 ﻿using Api.Services;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Collections.Generic;
+using System;
 
 namespace Api
 {
@@ -21,18 +21,23 @@ namespace Api
         // Registers services into DI
         public void ConfigureServices(IServiceCollection services)
         {
-            // Register controllers (replaces AddMvc/CompatibilityVersion in old templates)
+            // Register controllers
             services.AddControllers();
 
-            // Bind Kafka configs from configuration - use Get<Dictionary> for dot-notation support
-            var producerConfigDict = Configuration.GetSection("producer").Get<Dictionary<string, string>>();
-            var consumerConfigDict = Configuration.GetSection("consumer").Get<Dictionary<string, string>>();
+            // Configure Service Bus connection
+            string serviceBusConnectionString = Configuration["ServiceBus:ConnectionString"];
+            string queueName = Configuration["ServiceBus:QueueName"];
 
-            var producerConfig = new ProducerConfig(producerConfigDict);
-            var consumerConfig = new ConsumerConfig(consumerConfigDict);
+            // Register ServiceBusClient as singleton
+            services.AddSingleton(sp => 
+                new ServiceBusClient(serviceBusConnectionString));
 
-            services.AddSingleton(producerConfig);
-            services.AddSingleton(consumerConfig);
+            // Register ServiceBusProcessor or ServiceBusReceiver as scoped
+            services.AddScoped(sp => 
+            {
+                var client = sp.GetRequiredService<ServiceBusClient>();
+                return client.CreateProcessor(queueName);
+            });
 
             // Register the hosted/background service
             services.AddHostedService<ProcessOrdersService>();
@@ -50,9 +55,6 @@ namespace Api
                 // HSTS for non-development environments
                 app.UseHsts();
             }
-
-            // Uncomment if you want automatic redirect to HTTPS
-            // app.UseHttpsRedirection();
 
             app.UseRouting();
 
