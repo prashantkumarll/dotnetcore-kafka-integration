@@ -1,10 +1,11 @@
 ﻿using Api.Services;
-using Confluent.Kafka;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System;
 using System.Collections.Generic;
 
 namespace Api
@@ -21,18 +22,23 @@ namespace Api
         // Registers services into DI
         public void ConfigureServices(IServiceCollection services)
         {
-            // Register controllers (replaces AddMvc/CompatibilityVersion in old templates)
+            // Register controllers
             services.AddControllers();
 
-            // Bind Kafka configs from configuration - use Get<Dictionary> for dot-notation support
-            var producerConfigDict = Configuration.GetSection("producer").Get<Dictionary<string, string>>();
-            var consumerConfigDict = Configuration.GetSection("consumer").Get<Dictionary<string, string>>();
+            // Configure Service Bus connection
+            var serviceBusConnectionString = Configuration["ServiceBus:ConnectionString"];
+            var queueName = Configuration["ServiceBus:QueueName"];
 
-            var producerConfig = new ProducerConfig(producerConfigDict);
-            var consumerConfig = new ConsumerConfig(consumerConfigDict);
+            // Register ServiceBusClient as singleton
+            services.AddSingleton(sp => 
+                new ServiceBusClient(serviceBusConnectionString));
 
-            services.AddSingleton(producerConfig);
-            services.AddSingleton(consumerConfig);
+            // Register ServiceBusProcessor or ServiceBusReceiver as scoped/singleton
+            services.AddSingleton(sp => 
+            {
+                var client = sp.GetRequiredService<ServiceBusClient>();
+                return client.CreateProcessor(queueName);
+            });
 
             // Register the hosted/background service
             services.AddHostedService<ProcessOrdersService>();
